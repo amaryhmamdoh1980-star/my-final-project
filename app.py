@@ -28,8 +28,16 @@ class DB:
 
 db = DB()
 
-# --- Gemini API Config (Direct Call) ---
+# --- Gemini API Config ---
 API_KEY = os.environ.get("GOOGLE_API_KEY")
+
+def call_gemini(message, model_name="gemini-1.5-flash"):
+    # שימוש בגרסה v1 היציבה ולא v1beta
+    url = f"https://generativelanguage.googleapis.com/v1/models/{model_name}:generateContent?key={API_KEY}"
+    payload = {
+        "contents": [{"parts": [{"text": f"ענה כמורה לגיאוגרפיה והיסטוריה בעברית: {message}"}]}]
+    }
+    return requests.post(url, json=payload)
 
 @app.route("/")
 def index():
@@ -41,25 +49,21 @@ def chat():
     if not user_input:
         return jsonify({"reply": "לא נשלחה הודעה"}), 400
 
-    # קריאה ישירה ל-API של גוגל ללא הספרייה הבעייתית
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
-    
-    payload = {
-        "contents": [{
-            "parts": [{"text": f"ענה כמורה לגיאוגרפיה והיסטוריה בעברית: {user_input}"}]
-        }]
-    }
-
     try:
-        response = requests.post(url, json=payload)
+        # ניסיון ראשון - גרסה יציבה v1 עם gemini-1.5-flash
+        response = call_gemini(user_input, "gemini-1.5-flash")
+        
+        # אם גוגל מחזירה 404 (לא נמצא), ננסה את המודל היציב המוכר gemini-pro
+        if response.status_code == 404:
+            response = call_gemini(user_input, "gemini-pro")
+
         response_data = response.json()
 
         if response.status_code == 200:
             reply = response_data['candidates'][0]['content']['parts'][0]['text']
         else:
-            # אם יש שגיאה מגוגל, ננסה להבין מה היא
             error_msg = response_data.get('error', {}).get('message', 'שגיאה לא ידועה')
-            return jsonify({"reply": f"שגיאה מהשרת של גוגל: {error_msg}"}), response.status_code
+            return jsonify({"reply": f"שגיאה מגוגל: {error_msg}"}), response.status_code
 
         # שמירה במסד נתונים
         try:
@@ -70,7 +74,7 @@ def chat():
         return jsonify({"reply": reply})
 
     except Exception as e:
-        return jsonify({"reply": f"תקלה בתקשורת: {str(e)}"}), 500
+        return jsonify({"reply": f"תקלה בשרת: {str(e)}"}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
