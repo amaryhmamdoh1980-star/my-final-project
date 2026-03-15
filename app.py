@@ -40,7 +40,7 @@ def chat():
         parts.append({"inline_data": {"mime_type": image_file.content_type, "data": image_data}})
     try:
         r = requests.post(
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
             headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
             json={"contents": [{"parts": parts}]}
         )
