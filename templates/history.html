@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>היסטוריית שיחות - המורה החכם</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #e5ddd5; /* צבע הרקע של וואטסאפ */
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #075e54;
+            border-bottom: 3px solid #25d366;
+            padding-bottom: 10px;
+            margin-top: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+        }
+        th, td {
+            padding: 15px;
+            text-align: right;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f8f9fa;
+            color: #075e54;
+            font-weight: 600;
+        }
+        tr:hover {
+            background-color: #f1f3f4;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+            text-decoration: none;
+            color: #075e54;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        .back-link:hover {
+            color: #128c7e;
+        }
+        .lang-badge {
+            background-color: #dcf8c6;
+            color: #075e54;
+            padding: 4px 8px;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <a href="/" class="back-link"><i class="fas fa-arrow-right"></i> חזרה לצ'אט עם המורה</a>
+
+    <h1><i class="fas fa-history"></i> היסטוריית שיחות למידה</h1>
+
+    <table>
+        <thead>
+            <tr>
+                <th>מזהה</th>
+                <th>השאלה שלך</th>
+                <th>תשובת המורה</th>
+                <th>נושא/שפה</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for chat in chats %}
+            <tr>
+                <td>{{ chat.id }}</td>
+                <td><strong>{{ chat.user_msg }}</strong></td>
+                <td>{{ chat.bot_res | safe }}</td>
+                <td><span class="lang-badge">{{ chat.lang }}</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if not chats %}
+    <div style="text-align: center; color: #70757a; margin-top: 40px;">
+        <i class="fas fa-comment-slash fa-3x" style="color: #ccc; margin-bottom: 15px;"></i>
+        <p>עדיין אין שיחות שמורות במערכת.</p>
+        <p><a href="/" style="color: #075e54;">לחץ כאן כדי להתחיל שיחה חדשה!</a></p>
+    </div>
+    {% endif %}
+</div>
+
+</body>
+</html>

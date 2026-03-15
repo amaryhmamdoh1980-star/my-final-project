@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>המורה החכם - {% block title %}{% endblock %}</title>
+
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#25D366">
+    <link rel="apple-touch-icon" href="/static/icon.png">
+
+    <link rel="stylesheet" href="/static/style.css">
+
+    {% block head %}{% endblock %}
+</head>
+<body>
+
+    <header>
+        <h1>המורה לגיאוגרפיה והיסטוריה</h1>
+        <nav>
+            <a href="/">צ'אט</a> |
+            <a href="/history">היסטוריית למידה</a>
+        </nav>
+    </header>
+
+    <main>
+        {% block main %}{% endblock %}
+    </main>
+
+    <footer>
+        <p>&copy; 2026 מפותח על ידי ממדווח אמאריה</p>
+    </footer>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/sw.js');
+        }
+    </script>
+</body>
+</html>
