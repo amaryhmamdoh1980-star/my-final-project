@@ -2,10 +2,28 @@ import os
 import requests
 import base64
 from flask import Flask, render_template, request, jsonify
-from cs50 import SQL
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
-db = SQL("postgresql://postgres.yimsexytrswzamnslgcd:MaAm%40036355972@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres?sslmode=require")
+
+# הגדרת בסיס הנתונים (השתמשתי בקישור מהתמונה שלך)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres.yimsexytrswzamnslgcd:MaAm%40036355972@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db_obj = SQLAlchemy(app)
+
+# פונקציית עזר כדי שתוכל להמשיך להשתמש ב-db.execute כמו ב-CS50
+class DB:
+    def execute(self, query, *args):
+        from sqlalchemy import text
+        # מחליף סימני שאלה בפרמטרים אם יש כאלו (תאימות ל-CS50)
+        result = db_obj.session.execute(text(query.replace('?', ':val')), {f'val{i}': arg for i, arg in enumerate(args)})
+        db_obj.session.commit()
+        if query.strip().upper().startswith("SELECT"):
+            return [dict(row._mapping) for row in result]
+        return None
+
+db = DB()
 
 @app.route("/")
 def index():
