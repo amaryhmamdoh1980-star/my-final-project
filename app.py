@@ -1,5 +1,5 @@
 import os
-import google.generativeai as genai
+import requests
 from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
@@ -28,13 +28,8 @@ class DB:
 
 db = DB()
 
-# --- Gemini Config ---
-# ניסיון להגדיר את ה-API בצורה שתמנע את שגיאת ה-v1beta
-api_key = os.environ.get("GOOGLE_API_KEY")
-genai.configure(api_key=api_key)
-
-# שימוש בשם המודל הפשוט ביותר - הספרייה כבר תדע להוסיף models/
-model = genai.GenerativeModel('gemini-1.5-flash')
+# --- Gemini API Config (Direct Call) ---
+API_KEY = os.environ.get("GOOGLE_API_KEY")
 
 @app.route("/")
 def index():
@@ -44,29 +39,38 @@ def index():
 def chat():
     user_input = request.form.get("message", "")
     if not user_input:
-        return jsonify({"reply": "לא התקבלה הודעה"}), 400
+        return jsonify({"reply": "לא נשלחה הודעה"}), 400
+
+    # קריאה ישירה ל-API של גוגל ללא הספרייה הבעייתית
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
+    
+    payload = {
+        "contents": [{
+            "parts": [{"text": f"ענה כמורה לגיאוגרפיה והיסטוריה בעברית: {user_input}"}]
+        }]
+    }
 
     try:
-        # שליחה למודל
-        response = model.generate_content(user_input)
-        
-        if response and response.text:
-            reply = response.text
+        response = requests.post(url, json=payload)
+        response_data = response.json()
+
+        if response.status_code == 200:
+            reply = response_data['candidates'][0]['content']['parts'][0]['text']
         else:
-            reply = "המערכת לא החזירה תשובה, נסה שוב."
+            # אם יש שגיאה מגוגל, ננסה להבין מה היא
+            error_msg = response_data.get('error', {}).get('message', 'שגיאה לא ידועה')
+            return jsonify({"reply": f"שגיאה מהשרת של גוגל: {error_msg}"}), response.status_code
 
         # שמירה במסד נתונים
         try:
             db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input, reply)
         except:
-            pass # התעלמות משגיאת דאטהבייס כדי שהצ'אט ימשיך לעבוד
+            pass
 
         return jsonify({"reply": reply})
 
     except Exception as e:
-        print(f"Detailed Error: {str(e)}")
-        # אם יש שגיאה, נחזיר הודעה ברורה למשתמש
-        return jsonify({"reply": f"שגיאה בחיבור למודל: {str(e)}"}), 500
+        return jsonify({"reply": f"תקלה בתקשורת: {str(e)}"}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
