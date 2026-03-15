@@ -41,10 +41,9 @@ def chat():
     if not user_input:
         return jsonify({"reply": "לא נשלחה הודעה"}), 400
 
-    # כתובת ה-API המדויקת
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
+    # שינוי המודל ל-gemini-2.0-flash (מה שהופיע לך ב-JSON)
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={API_KEY}"
     
-    # חובה להוסיף Content-Type בבקשות POST לגוגל
     headers = {'Content-Type': 'application/json'}
     
     payload = {
@@ -58,17 +57,16 @@ def chat():
         data = response.json()
 
         if response.status_code == 200:
-            # שליפת התשובה מהמבנה של גוגל
             reply = data['candidates'][0]['content']['parts'][0]['text']
             
-            # שמירה במסד נתונים
             try:
                 db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input, reply)
-            except Exception as e:
-                print(f"DB Error: {e}")
+            except:
+                pass
             
             return jsonify({"reply": reply})
         else:
+            # אם גוגל מחזירה שגיאה, נציג אותה כדי להבין מה קורה
             error_msg = data.get('error', {}).get('message', 'Unknown Error')
             return jsonify({"reply": f"שגיאה מגוגל ({response.status_code}): {error_msg}"}), response.status_code
 
