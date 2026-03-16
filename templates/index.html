@@ -5,10 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>המורה החכם - צ'אט</title>
 
-    <link rel="manifest" href="/static/manifest.json">
-    <meta name="theme-color" content="#075e54">
-    <link rel="apple-touch-icon" href="/static/icon.png">
-    
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -23,108 +19,64 @@
         body { 
             font-family: 'Assistant', sans-serif; 
             background-color: var(--bg-color); 
-            margin: 0; 
-            display: flex; 
-            flex-direction: column; 
-            height: 100vh; 
-            overflow: hidden;
-            transition: all 0.3s ease;
+            margin: 0; padding: 0;
+            display: flex; flex-direction: column; height: 100vh; overflow: hidden;
         }
-        /* --- Header --- */
         #header { 
-            background-color: var(--primary-color); 
-            color: white; 
-            padding: 10px 15px; 
-            display: flex; 
-            align-items: center; 
-            justify-content: space-between;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
-            z-index: 10;
+            background-color: var(--primary-color); color: white; 
+            padding: 10px 15px; display: flex; align-items: center; justify-content: space-between;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 100;
         }
+        .header-center { display: flex; align-items: center; gap: 8px; flex: 1; justify-content: center; }
+        .logo { width: 35px; height: 35px; border-radius: 50%; background: white; border: 1px solid #fff; }
+        .header-gif { width: 50px; height: 35px; border-radius: 5px; object-fit: cover; display: block; border: 1px solid rgba(255,255,255,0.3); }
 
-        .header-center { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; flex: 1; justify-content: center; }
-        .logo-link { display: flex; align-items: center; text-decoration: none; }
-        .logo { width: 40px; height: 40px; border-radius: 50%; border: 2px solid white; background-color: white; }
-        
-        /* התמונה שהחליפה את ההיסטוריה */
-        .header-gif { width: 50px; height: 40px; border-radius: 5px; object-fit: cover; border: 1px solid rgba(255,255,255,0.5); }
-
-        /* בוחר שפה */
-        .lang-switcher { display: flex; gap: 5px; background: rgba(0,0,0,0.1); padding: 5px; border-radius: 20px; margin: 0 5px; }
-        .lang-btn { background: none; border: none; color: white; cursor: pointer; font-size: 12px; font-weight: bold; opacity: 0.6; padding: 2px 5px; }
+        .lang-switcher { display: flex; gap: 5px; background: rgba(0,0,0,0.2); padding: 4px 8px; border-radius: 15px; }
+        .lang-btn { background: none; border: none; color: white; cursor: pointer; font-size: 11px; font-weight: bold; opacity: 0.5; }
         .lang-btn.active { opacity: 1; text-decoration: underline; }
 
-        /* --- Chat Window --- */
         #chat-window { 
-            flex: 1; 
-            overflow-y: auto; 
-            padding: 15px; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 12px; 
+            flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; 
             background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
-            background-repeat: repeat;
         }
-         .message { 
-            max-width: 85%; 
-            padding: 10px 15px; 
-            border-radius: 18px; 
-            font-size: 16px; 
-            line-height: 1.5; 
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-            position: relative;
-            word-wrap: break-word;
-        }
-
-        /* תמיכה בכיווניות בועות */
-        .rtl .user { align-self: flex-start; border-top-left-radius: 2px; }
-        .rtl .bot { align-self: flex-end; border-top-right-radius: 2px; }
-        .ltr .user { align-self: flex-end; border-top-right-radius: 2px; }
-        .ltr .bot { align-self: flex-start; border-top-left-radius: 2px; }
-
-        .user { background-color: var(--user-bubble); }
-        .bot { background-color: var(--bot-bubble); }
+        .message { max-width: 85%; padding: 10px 15px; border-radius: 18px; font-size: 16px; line-height: 1.5; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        
+        /* כיווניות */
+        .rtl .user { align-self: flex-start; background-color: var(--user-bubble); border-top-left-radius: 2px; }
+        .rtl .bot { align-self: flex-end; background-color: var(--bot-bubble); border-top-right-radius: 2px; }
+        .ltr .user { align-self: flex-end; background-color: var(--user-bubble); border-top-right-radius: 2px; }
+        .ltr .bot { align-self: flex-start; background-color: var(--bot-bubble); border-top-left-radius: 2px; }
 
         .typing-indicator { display: flex; gap: 4px; padding: 5px; }
         .dot { width: 8px; height: 8px; background: #888; border-radius: 50%; animation: pulse 1.5s infinite; }
-        .dot:nth-child(2) { animation-delay: 0.2s; }
-        .dot:nth-child(3) { animation-delay: 0.4s; }
         @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 0.4; } 50% { transform: scale(1.2); opacity: 1; } }
 
         .msg-tools { margin-top: 8px; padding-top: 5px; border-top: 1px solid #eee; }
-        .speak-btn { background: #f8f9fa; border: 1px solid #ddd; border-radius: 15px; padding: 4px 12px; cursor: pointer; font-size: 13px; color: #555; }
-        .speak-btn.active { background: #ff4757; color: white; }
+        .speak-btn { background: #f8f9fa; border: 1px solid #ddd; border-radius: 15px; padding: 4px 10px; cursor: pointer; font-size: 12px; }
 
-        /* --- Input Area --- */
-        #input-area { background: #f0f0f0; padding: 12px; border-top: 1px solid #ddd; display: flex; flex-direction: column; gap: 8px; }
-        .input-controls { display: flex; gap: 10px; align-items: center; max-width: 1000px; margin: 0 auto; width: 100%; }
-        #user-input { flex: 1; padding: 12px 20px; border-radius: 25px; border: 1px solid #fff; outline: none; font-size: 16px; }
-        .btn-send { background: var(--primary-color); color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+        #input-area { background: #f0f0f0; padding: 10px; border-top: 1px solid #ddd; }
+        .input-controls { display: flex; gap: 8px; align-items: center; }
+        #user-input { flex: 1; padding: 12px 15px; border-radius: 25px; border: 1px solid #fff; outline: none; font-size: 16px; }
+        .btn-send { background: var(--primary-color); color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .icon-btn { background: none; border: none; font-size: 22px; color: #54656f; cursor: pointer; }
-        
-        #preview-container { align-self: center; position: relative; display: none; }
-        #preview-img { max-height: 100px; border-radius: 10px; border: 2px solid var(--primary-color); }
     </style>
 </head>
-<body class="rtl">
+<body class="rtl" id="body-main">
+
     <div id="header">
-        <button class="icon-btn" style="color:white;" onclick="downloadPDF()"><i class="fas fa-file-pdf"></i></button>
-        
+        <button class="icon-btn" style="color:white;" id="pdf-btn"><i class="fas fa-file-pdf"></i></button>
         <div class="header-center">
-            <a href="https://sites.google.com/view/geology-info/" target="_blank" class="logo-link">
+            <a href="https://sites.google.com/view/geology-info/" target="_blank">
                 <img src="/static/icon.png" class="logo" alt="לוגו">
             </a>
             <span id="ui-title">המורה החכם</span>
-            
             <div class="lang-switcher">
-                <button class="lang-btn active" onclick="changeLang('he')">HE</button>
-                <button class="lang-btn" onclick="changeLang('ar')">AR</button>
-                <button class="lang-btn" onclick="changeLang('en')">EN</button>
+                <button class="lang-btn active" id="btn-he">HE</button>
+                <button class="lang-btn" id="btn-ar">AR</button>
+                <button class="lang-btn" id="btn-en">EN</button>
             </div>
         </div>
-
-        <!-- התמונה שהחליפה את כפתור ההיסטוריה -->
-        <img src="/static/uploads/tumblr_static_tumblr_ck5wlz6qil4ccsgw04cwwocsw_640.gif" class="header-gif" alt="נוף">
+        <img src="/static/uploads/tumblr_static_tumblr_ck5wlz6qil4ccsgw04cwwocsw_640.gif" class="header-gif">
     </div>
 
     <div id="chat-window">
@@ -132,199 +84,180 @@
     </div>
 
     <div id="input-area">
-        <div id="preview-container">
-            <img id="preview-img" src="">
-            <button onclick="clearPreview()" style="position:absolute; top:-10px; right:-10px; background:red; color:white; border-radius:50%; border:none; width:25px; height:25px; cursor:pointer;">&times;</button>
+        <div id="preview-container" style="display:none; text-align:center; margin-bottom:5px;">
+            <img id="preview-img" src="" style="max-height:80px; border-radius:5px;">
+            <button id="clear-preview-btn" style="color:red; border:none; background:none; cursor:pointer; font-weight:bold;">&times;</button>
         </div>
         <div class="input-controls">
-            <input type="file" id="file-input" hidden accept="image/*" onchange="previewImage(this)">
-            <button class="icon-btn" onclick="document.getElementById('file-input').click()"><i class="fas fa-camera"></i></button>
-            <input type="text" id="user-input" placeholder="הקלד שאלה..." onkeypress="if(event.key === 'Enter') sendMessage()">
+            <input type="file" id="file-input" hidden accept="image/*">
+            <button class="icon-btn" id="camera-btn"><i class="fas fa-camera"></i></button>
+            <input type="text" id="user-input" placeholder="הקלד שאלה...">
             <button class="icon-btn" id="mic-btn"><i class="fas fa-microphone"></i></button>
-            <button class="btn-send" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+            <button class="btn-send" id="send-btn"><i class="fas fa-paper-plane"></i></button>
         </div>
     </div>
 
     <script>
-        <script>
-        // --- מילון תרגומים ---
-        const translations = {
-            he: { title: "המורה החכם", placeholder: "הקלד שאלה...", welcome: "שלום! אני המורה החכם לגיאוגרפיה והיסטוריה. איך אוכל לעזור לך היום?", speak: "הקרא", stop: "עצור", dir: "rtl", langCode: "he-IL" },
-            ar: { title: "المعلم الذكي", placeholder: "اكتب سؤالاً...", welcome: "مرحباً! أنا المعلم الذكي للجغرافيا والتاريخ. איך אוכל לעזור לך היום?", speak: "استماع", stop: "توقف", dir: "rtl", langCode: "ar-SA" },
-            en: { title: "Smart Teacher", placeholder: "Type a question...", welcome: "Hello! I am the Smart Teacher for Geography and History. How can I help you today?", speak: "Speak", stop: "Stop", dir: "ltr", langCode: "en-US" }
-        };
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("Script loaded and DOM ready.");
 
-        let currentLang = 'he';
-        const chatWindow = document.getElementById('chat-window');
-        let chatHistory = [];
+            const translations = {
+                he: { title: "המורה החכם", placeholder: "הקלד שאלה...", welcome: "שלום! אני המורה החכם לגיאוגרפיה והיסטוריה. איך אוכל לעזור לך היום?", speak: "הקרא", stop: "עצור", dir: "rtl", lang: "he-IL" },
+                ar: { title: "المعلم الذكي", placeholder: "اكتب سؤالاً...", welcome: "مرحباً! أنا المعلم الذكي للجغرافيا والتاريخ. كيف يمكنني مساعدتك اليوم؟", speak: "استماع", stop: "توقف", dir: "rtl", lang: "ar-SA" },
+                en: { title: "Smart Teacher", placeholder: "Type a question...", welcome: "Hello! I am the Smart Teacher for Geography and History. How can I help you today?", speak: "Speak", stop: "Stop", dir: "ltr", lang: "en-US" }
+            };
 
-        // פונקציה להחלפת שפה בממשק
-        function changeLang(lang) {
-            currentLang = lang;
-            const t = translations[lang];
-            
-            // עדכון טקסטים
-            document.getElementById('ui-title').innerText = t.title;
-            document.getElementById('user-input').placeholder = t.placeholder;
-            document.getElementById('ui-welcome').innerText = t.welcome;
-            
-            // עדכון כיווניות
-            document.body.className = t.dir;
-            document.documentElement.dir = t.dir;
-            
-            // עדכון כפתורי שפה
-            document.querySelectorAll('.lang-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.innerText.toLowerCase() === lang);
-            });
-        }
-
-        function previewImage(input) {
-            const container = document.getElementById('preview-container');
-            const img = document.getElementById('preview-img');
-            if (input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = e => { img.src = e.target.result; container.style.display = 'block'; };
-                reader.readAsDataURL(input.files[0]);
-            }
-        }
-
-        function clearPreview() {
-            document.getElementById('file-input').value = '';
-            document.getElementById('preview-container').style.display = 'none';
-        }
-
-        async function sendMessage() {
-            const input = document.getElementById('user-input');
+            let currentLang = 'he';
+            const chatWindow = document.getElementById('chat-window');
+            const userInput = document.getElementById('user-input');
+            const sendBtn = document.getElementById('send-btn');
             const fileInput = document.getElementById('file-input');
-            const text = input.value.trim();
-            const file = fileInput.files[0];
+            const bodyMain = document.getElementById('body-main');
 
-            if (!text && !file) return;
+            // פונקציית החלפת שפה
+            window.changeLang = (lang) => {
+                currentLang = lang;
+                const t = translations[lang];
+                document.getElementById('ui-title').innerText = t.title;
+                userInput.placeholder = t.placeholder;
+                document.getElementById('ui-welcome').innerText = t.welcome;
+                bodyMain.className = t.dir;
+                document.documentElement.dir = t.dir;
+                document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.id === 'btn-' + lang));
+            };
 
-            // תצוגה מקדימה של הודעת משתמש
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = e => addMessage(text, 'user', e.target.result);
-                reader.readAsDataURL(file);
-            } else {
-                addMessage(text, 'user');
+            // האזנה לכפתורי שפה
+            document.getElementById('btn-he').onclick = () => changeLang('he');
+            document.getElementById('btn-ar').onclick = () => changeLang('ar');
+            document.getElementById('btn-en').onclick = () => changeLang('en');
+
+            // טיפול בתמונות
+            document.getElementById('camera-btn').onclick = () => fileInput.click();
+            fileInput.onchange = () => {
+                if (fileInput.files && fileInput.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        document.getElementById('preview-img').src = e.target.result;
+                        document.getElementById('preview-container').style.display = 'block';
+                    };
+                    reader.readAsDataURL(fileInput.files[0]);
+                }
+            };
+            document.getElementById('clear-preview-btn').onclick = () => {
+                fileInput.value = '';
+                document.getElementById('preview-container').style.display = 'none';
+            };
+
+            // שליחת הודעה
+            window.sendMessage = async () => {
+                const text = userInput.value.trim();
+                const file = fileInput.files[0];
+                if (!text && !file) return;
+
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = e => addMessage(text, 'user', e.target.result);
+                    reader.readAsDataURL(file);
+                } else {
+                    addMessage(text, 'user');
+                }
+
+                userInput.value = '';
+                document.getElementById('preview-container').style.display = 'none';
+
+                const typingId = "typing_" + Date.now();
+                showTyping(typingId);
+
+                const formData = new FormData();
+                formData.append('message', text);
+                if (file) formData.append('image', file);
+                fileInput.value = '';
+
+                try {
+                    const res = await fetch('/chat', { method: 'POST', body: formData });
+                    const data = await res.json();
+                    const typingEl = document.getElementById(typingId);
+                    if (typingEl) typingEl.remove();
+                    addMessage(data.reply, 'bot');
+                } catch (e) {
+                    const typingEl = document.getElementById(typingId);
+                    if (typingEl) typingEl.remove();
+                    addMessage("Error!", "bot");
+                }
+            };
+
+            sendBtn.onclick = sendMessage;
+            userInput.onkeypress = (e) => { if (e.key === 'Enter') sendMessage(); };
+
+            function addMessage(text, side, imgUrl = null) {
+                const div = document.createElement('div');
+                div.className = `message ${side}`;
+                if (imgUrl) {
+                    const img = document.createElement('img');
+                    img.src = imgUrl; img.style.maxWidth = "100%"; img.style.borderRadius = "10px";
+                    div.appendChild(img);
+                }
+                const txt = document.createElement('div');
+                txt.innerText = text;
+                div.appendChild(txt);
+
+                if (side === 'bot') {
+                    const tools = document.createElement('div');
+                    tools.className = 'msg-tools';
+                    const btn = document.createElement('button');
+                    btn.className = 'speak-btn';
+                    btn.innerText = translations[currentLang].speak;
+                    btn.onclick = () => handleSpeak(text, btn);
+                    tools.appendChild(btn);
+                    div.appendChild(tools);
+                }
+                chatWindow.appendChild(div);
+                chatWindow.scrollTop = chatWindow.scrollHeight;
             }
 
-            chatHistory.push({role: 'User', text: text});
-            input.value = '';
-            clearPreview();
-
-            const typingId = "typing_" + Date.now();
-            showTyping(typingId);
-
-            const formData = new FormData();
-            formData.append('message', text);
-            if (file) formData.append('image', file);
-
-            try {
-                const response = await fetch('/chat', { method: 'POST', body: formData });
-                const data = await response.json();
-                document.getElementById(typingId).remove();
-                addMessage(data.reply, 'bot');
-                chatHistory.push({role: 'Teacher', text: data.reply});
-            } catch (e) {
-                if(document.getElementById(typingId)) document.getElementById(typingId).remove();
-                addMessage("Error connecting to server.", "bot");
-            }
-        }
-
-        function addMessage(text, side, imageUrl = null) {
-            const div = document.createElement('div');
-            div.className = `message ${side}`;
-            
-            if (imageUrl) {
-                const img = document.createElement('img');
-                img.src = imageUrl;
-                img.style.maxWidth = "100%";
-                img.style.borderRadius = "10px";
-                div.appendChild(img);
+            function showTyping(id) {
+                const div = document.createElement('div');
+                div.id = id; div.className = 'message bot';
+                div.innerHTML = '<div class="typing-indicator"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
+                chatWindow.appendChild(div);
+                chatWindow.scrollTop = chatWindow.scrollHeight;
             }
 
-            const content = document.createElement('div');
-            content.innerText = text;
-            div.appendChild(content);
-
-            if (side === 'bot') {
-                const tools = document.createElement('div');
-                tools.className = 'msg-tools';
-                const btn = document.createElement('button');
-                btn.className = 'speak-btn';
-                btn.innerHTML = `<i class="fas fa-volume-up"></i> ${translations[currentLang].speak}`;
-                btn.onclick = () => handleSpeak(text, btn);
-                tools.appendChild(btn);
-                div.appendChild(tools);
-            }
-
-            chatWindow.appendChild(div);
-            chatWindow.scrollTop = chatWindow.scrollHeight;
-        }
-
-        function showTyping(id) {
-            const div = document.createElement('div');
-            div.id = id; div.className = 'message bot';
-            div.innerHTML = '<div class="typing-indicator"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
-            chatWindow.appendChild(div);
-            chatWindow.scrollTop = chatWindow.scrollHeight;
-        }
-
-        function handleSpeak(text, btn) {
-            if (window.speechSynthesis.speaking) {
+            window.handleSpeak = (text, btn) => {
                 window.speechSynthesis.cancel();
-                if (btn.classList.contains('active')) {
-                    btn.classList.remove('active');
-                    btn.innerHTML = `<i class="fas fa-volume-up"></i> ${translations[currentLang].speak}`;
+                if (btn.innerText === translations[currentLang].stop) {
+                    btn.innerText = translations[currentLang].speak;
                     return;
                 }
+                const msg = new SpeechSynthesisUtterance(text);
+                msg.lang = (/[א-ת]/.test(text)) ? 'he-IL' : (/[أ-י]/.test(text) ? 'ar-SA' : 'en-US');
+                msg.onstart = () => btn.innerText = translations[currentLang].stop;
+                msg.onend = () => btn.innerText = translations[currentLang].speak;
+                window.speechSynthesis.speak(msg);
+            };
+
+            document.getElementById('pdf-btn').onclick = () => {
+                if (window.jspdf) {
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF();
+                    doc.text("Chat History Export", 10, 10);
+                    doc.save("chat.pdf");
+                }
+            };
+
+            const micBtn = document.getElementById('mic-btn');
+            const SpeechRec = window.webkitSpeechRecognition || window.SpeechRecognition;
+            if (SpeechRec) {
+                const rec = new SpeechRec();
+                micBtn.onclick = () => { 
+                    rec.lang = translations[currentLang].lang; 
+                    rec.start(); 
+                    micBtn.style.color = 'red'; 
+                };
+                rec.onresult = e => userInput.value = e.results[0][0].transcript;
+                rec.onend = () => micBtn.style.color = '#54656f';
             }
-            document.querySelectorAll('.speak-btn').forEach(b => {
-                b.classList.remove('active'); b.innerHTML = `<i class="fas fa-volume-up"></i> ${translations[currentLang].speak}`;
-            });
-            const msg = new SpeechSynthesisUtterance(text);
-            
-             // זיהוי שפה אוטומטי להקראה
-            if (/[א-ת]/.test(text)) msg.lang = 'he-IL';
-            else if (/[أ-ي]/.test(text)) msg.lang = 'ar-SA';
-            else msg.lang = 'en-US';
-
-            msg.onstart = () => { btn.classList.add('active'); btn.innerHTML = `<i class="fas fa-stop"></i> ${translations[currentLang].stop}`; };
-            msg.onend = () => { btn.classList.remove('active'); btn.innerHTML = `<i class="fas fa-volume-up"></i> ${translations[currentLang].speak}`; };
-            window.speechSynthesis.speak(msg);
-        }
-
-        function downloadPDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            doc.text("Chat History", 10, 10);
-            let y = 20;
-            chatHistory.forEach(m => {
-                if (y > 280) { doc.addPage(); y = 20; }
-                doc.text(`${m.role}: ${m.text}`, 10, y);
-                y += 10;
-            });
-            doc.save("chat_history.pdf");
-        }
-
-        // --- מיקרופון ---
-        const micBtn = document.getElementById('mic-btn');
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (SpeechRecognition) {
-            const recognition = new SpeechRecognition();
-            micBtn.onclick = () => {
-                recognition.lang = translations[currentLang].langCode;
-                recognition.start();
-                micBtn.style.color = "red";
-            };
-            recognition.onresult = (e) => {
-                document.getElementById('user-input').value = e.results[0][0].transcript;
-                micBtn.style.color = "#54656f";
-            };
-            recognition.onend = () => { micBtn.style.color = "#54656f"; };
-        }
+        });
     </script>
 </body>
 </html>
