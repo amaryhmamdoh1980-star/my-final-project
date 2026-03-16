@@ -47,9 +47,7 @@ def chat():
     headers = {'Content-Type': 'application/json'}
     
     payload = {
-        "contents": [{
-            "parts": [{"text": f"ענה כמורה לגיאוגרפיה והיסטוריה בעברית: {user_input}"}]
-        }]
+        "parts": [{"text": f"תנהג כמורה מקצועי לגיאוגרפיה והיסטוריה. ענה על השאלה הבאה באותה שפה שבה היא נשאלה: {user_input}"}]
     }
 
     try:
