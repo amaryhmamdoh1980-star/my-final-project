@@ -59,4 +59,18 @@ def chat():
         if response.status_code == 200:
             reply = data['candidates'][0]['content']['parts'][0]['text']
             try:
-                db.execute("INSERT INTO history (user_message,
+                db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input, reply)
+            except:
+                pass
+            return jsonify({"reply": reply})
+        else:
+            # שליפת הודעת שגיאה מפורטת מגוגל
+            error_msg = data.get('error', {}).get('message', 'Unknown Error')
+            return jsonify({"reply": f"שגיאה מגוגל ({response.status_code}): {error_msg}"}), response.status_code
+
+    except Exception as e:
+        return jsonify({"reply": f"תקלה בחיבור: {str(e)}"}), 500
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
