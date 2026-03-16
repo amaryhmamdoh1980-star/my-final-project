@@ -153,60 +153,73 @@
         }
 
         async function sendMessage() {
-            const input = document.getElementById('user-input');
-            const fileInput = document.getElementById('file-input');
-            const text = input.value.trim();
-            const file = fileInput.files[0];
+    const input = document.getElementById('user-input');
+    const fileInput = document.getElementById('file-input');
+    const text = input.value.trim();
+    const file = fileInput.files[0];
 
-            if (!text && !file) return;
+    if (!text && !file) return;
 
-            addMessage(text, 'user');
-            chatHistory.push({role: 'משתמש', text: text});
-            
-            input.value = '';
-            clearPreview();
-
-            const typingId = "typing_" + Date.now();
-            showTyping(typingId);
-
-            const formData = new FormData();
-            formData.append('message', text);
-            if (file) formData.append('image', file);
-
-            try {
-                const response = await fetch('/chat', { method: 'POST', body: formData });
-                const data = await response.json();
-                
-                document.getElementById(typingId).remove();
-                addMessage(data.reply, 'bot');
-                chatHistory.push({role: 'מורה', text: data.reply});
-            } catch (e) {
-                if(document.getElementById(typingId)) document.getElementById(typingId).remove();
-                addMessage("שגיאה בתקשורת.", "bot");
-            }
+    // הצגת הודעת המשתמש עם תמונה אם קיימת
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            addMessage(text, 'user', e.target.result); // פונקציה מעודכנת מקבלת URL תמונה
         }
+        reader.readAsDataURL(file);
+    } else {
+        addMessage(text, 'user');
+    }
 
-       function addMessage(text, side) {
-            const div = document.createElement('div');
-            div.className = `message ${side}`;
-            const content = document.createElement('div');
-            content.innerText = text;
-            div.appendChild(content);
+    input.value = '';
+    const typingId = "typing_" + Date.now();
+    showTyping(typingId);
 
-            if (side === 'bot') {
-                const tools = document.createElement('div');
-                tools.className = 'msg-tools';
-                const btn = document.createElement('button');
-                btn.className = 'speak-btn';
-                btn.innerHTML = '<i class="fas fa-volume-up"></i> הקרא';
-                btn.onclick = () => handleSpeak(text, btn);
-                tools.appendChild(btn);
-                div.appendChild(tools);
-            }
+    const formData = new FormData();
+    formData.append('message', text);
+    if (file) formData.append('image', file);
 
-            chatWindow.appendChild(div);
-            chatWindow.scrollTop = chatWindow.scrollHeight;
-        }
+    clearPreview(); // ניקוי התצוגה המקדימה למטה
+
+    try {
+        const response = await fetch('/chat', { method: 'POST', body: formData });
+        const data = await response.json();
+        document.getElementById(typingId).remove();
+        addMessage(data.reply, 'bot');
+    } catch (e) {
+        if(document.getElementById(typingId)) document.getElementById(typingId).remove();
+        addMessage("שגיאה בתקשורת.", "bot");
+    }
+}
+
+// עדכון פונקציית addMessage שתתמוך בתמונות
+function addMessage(text, side, imageUrl = null) {
+    const div = document.createElement('div');
+    div.className = `message ${side}`;
+    
+    if (imageUrl) {
+        const img = document.createElement('img');
+        img.src = imageUrl;
+        img.style.maxWidth = "100%";
+        img.style.borderRadius = "10px";
+        img.style.marginBottom = "5px";
+        div.appendChild(img);
+    }
+
+    const content = document.createElement('div');
+    content.innerText = text;
+    div.appendChild(content);
+
+    if (side === 'bot') {
+        const tools = document.createElement('div');
+        tools.className = 'msg-tools';
+        tools.innerHTML = `<button class="speak-btn" onclick="handleSpeak('${text.replace(/'/g, "\\'")}', this)"><i class="fas fa-volume-up"></i> הקרא</button>`;
+        div.appendChild(tools);
+    }
+
+    chatWindow.appendChild(div);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+}
 
         function showTyping(id) {
             const div = document.createElement('div');

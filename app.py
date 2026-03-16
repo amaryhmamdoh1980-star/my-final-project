@@ -1,5 +1,6 @@
 import os
 import requests
+import base64
 from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
@@ -38,20 +39,30 @@ def index():
 @app.route("/chat", methods=["POST"])
 def chat():
     user_input = request.form.get("message", "")
-    if not user_input:
-        return jsonify({"reply": "לא נשלחה הודעה"}), 400
-
-    # שימוש במודל 2.5 פלאש כפי שראינו ברשימה שלך
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
+    image_file = request.files.get("image")  # קבלת קובץ התמונה
     
+    if not user_input and not image_file:
+        return jsonify({"reply": "לא נשלחה הודעה או תמונה"}), 400
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
     headers = {'Content-Type': 'application/json'}
     
-    # המבנה שגוגל דורשת (חייב לכלול את השדה "text" בתוך "parts")
+    # בניית החלק של הטקסט ב-payload
+    parts = [{"text": f"תנהג כמורה מקצועי לגיאוגרפיה והיסטוריה. ענה אך ורק בשפה שבה נשאלת. אם יש תמונה, נתח אותה וענה על השאלה בהתאם אליה. השאלה: {user_input}"}]
+    
+    # אם צורפה תמונה, נוסיף אותה ל-parts
+    if image_file:
+        image_data = base64.b64encode(image_file.read()).decode('utf-8')
+        parts.append({
+            "inline_data": {
+                "mime_type": image_file.content_type,
+                "data": image_data
+            }
+        })
+
     payload = {
         "contents": [{
-            "parts": [{
-                "text": f"תנהג כמורה מקצועי לגיאוגרפיה והיסטוריה. ענה אך ורק בשפה שבה נשאלת. אם השאלה בערבית - ענה בערבית בלבד. אם בעברית - בעברית בלבד. השאלה: {user_input}"
-            }]
+            "parts": parts
         }]
     }
 
@@ -62,18 +73,16 @@ def chat():
         if response.status_code == 200:
             reply = data['candidates'][0]['content']['parts'][0]['text']
             try:
-                db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input, reply)
+                db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input or "תמונה", reply)
             except:
                 pass
             return jsonify({"reply": reply})
         else:
-            # שליפת הודעת שגיאה מפורטת מגוגל
-            error_msg = data.get('error', {}).get('message', 'Unknown Error')
-            return jsonify({"reply": f"שגיאה מגוגל ({response.status_code}): {error_msg}"}), response.status_code
-
+            error_details = data.get('error', {}).get('message', 'Unknown Error')
+            return jsonify({"reply": f"שגיאה מגוגל: {error_details}"}), response.status_code
     except Exception as e:
         return jsonify({"reply": f"תקלה בחיבור: {str(e)}"}), 500
-
+        
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
