@@ -13,13 +13,30 @@
     <style>
         :root { --primary: #075e54; --bg: #e5ddd5; --user: #dcf8c6; --bot: #ffffff; }
         * { box-sizing: border-box; }
-        body { font-family: 'Assistant', sans-serif; background: var(--bg); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        body { 
+    font-family: 'Assistant', sans-serif; 
+    background: var(--bg); 
+    margin: 0; 
+    display: flex; 
+    flex-direction: column; 
+    height: 100vh; 
+    height: 100dvh; /* זה התיקון שמוודא שהכל נכנס למסך בטלפון */
+    overflow: hidden; 
+}
         
         #header { background: var(--primary); color: white; padding: 8px 15px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 10; }
         .header-left { display: flex; align-items: center; gap: 10px; flex: 1; justify-content: center; }
         
         /* עיצוב תמונת הפרופיל החדשה */
-        .profile-link { display: flex; align-items: center; text-decoration: none; }
+        #chat-window { 
+    flex: 1; 
+    overflow-y: auto; 
+    padding: 15px; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 10px; 
+    background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); 
+}
         .profile-img { width: 45px; height: 45px; border-radius: 50%; border: 2px solid white; object-fit: cover; background: white; }
         
         .logo-main { width: 35px; height: 35px; border-radius: 50%; background: white; }
@@ -39,7 +56,13 @@
         .msg-tools { margin-top: 5px; border-top: 1px solid #eee; padding-top: 5px; }
         .speak-btn { background: #f0f0f0; border: 1px solid #ccc; border-radius: 10px; cursor: pointer; font-size: 12px; padding: 2px 8px; }
 
-        #input-area { background: #f0f0f0; padding: 10px; border-top: 1px solid #ccc; }
+        #input-area { 
+    background: #f0f0f0; 
+    padding: 10px; 
+    border-top: 1px solid #ccc; 
+    flex-shrink: 0; 
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+}
         .input-row { display: flex; gap: 8px; align-items: center; }
         #user-input { flex: 1; padding: 12px; border-radius: 25px; border: 1px solid white; outline: none; }
         .btn-round { background: var(--primary); color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
