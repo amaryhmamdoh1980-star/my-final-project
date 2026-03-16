@@ -42,7 +42,8 @@ def chat():
         return jsonify({"reply": "לא נשלחה הודעה"}), 400
 
     # שינוי המודל ל-gemini-2.0-flash (מה שהופיע לך ב-JSON)
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={API_KEY}"
+    # מעבר למודל 2.5 פלאש - המודל הראשון שהופיע ברשימה שעבדה לך
+url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
     
     headers = {'Content-Type': 'application/json'}
     
