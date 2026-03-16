@@ -263,7 +263,48 @@ function addMessage(text, side, imageUrl = null) {
             doc.save("chat_history.pdf");
         }
 
-        document.getElementById('mic-btn').onclick = () => alert("הקלטה קולית דורשת HTTPS");
+        // --- הגדרת זיהוי קולי (מיקרופון) ---
+        const micBtn = document.getElementById('mic-btn');
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        if (SpeechRecognition) {
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'he-IL'; // עברית. לערבית שנה ל: 'ar-SA'
+            recognition.continuous = false;
+            recognition.interimResults = false;
+
+            micBtn.onclick = () => {
+                try {
+                    recognition.start();
+                    micBtn.style.color = "red"; // אינדיקציה ויזואלית שההקלטה פועלת
+                    console.log("Listening...");
+                } catch (e) {
+                    console.log("Recognition already started");
+                }
+            };
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById('user-input').value = transcript;
+                micBtn.style.color = "#54656f"; // החזרת צבע המקור
+            };
+
+            recognition.onerror = (event) => {
+                console.error("Speech recognition error", event.error);
+                micBtn.style.color = "#54656f";
+                if(event.error === 'not-allowed') {
+                    alert("יש לאשר גישה למיקרופון בהגדרות הדפדפן.");
+                }
+            };
+
+            recognition.onend = () => {
+                micBtn.style.color = "#54656f";
+            };
+        } else {
+            // אם הדפדפן לא תומך (כמו חלק מגרסאות ספארי הישנות)
+            micBtn.style.opacity = '0.3';
+            micBtn.onclick = () => alert("זיהוי קולי אינו נתמך בדפדפן זה.");
+        }
     </script>
 </body>
 </html>
