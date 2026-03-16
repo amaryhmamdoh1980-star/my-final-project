@@ -39,32 +39,42 @@ def index():
 @app.route("/chat", methods=["POST"])
 def chat():
     user_input = request.form.get("message", "")
-    image_file = request.files.get("image")  # קבלת קובץ התמונה
+    image_file = request.files.get("image")  # קבלת הקובץ מהטופס
     
     if not user_input and not image_file:
         return jsonify({"reply": "לא נשלחה הודעה או תמונה"}), 400
 
+    # המודל שעבד לנו מצוין
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
     headers = {'Content-Type': 'application/json'}
     
-    # בניית החלק של הטקסט ב-payload
-    parts = [{"text": f"תנהג כמורה מקצועי לגיאוגרפיה והיסטוריה. ענה אך ורק בשפה שבה נשאלת. אם יש תמונה, נתח אותה וענה על השאלה בהתאם אליה. השאלה: {user_input}"}]
-    
-    # אם צורפה תמונה, נוסיף אותה ל-parts
-    if image_file:
-        image_data = base64.b64encode(image_file.read()).decode('utf-8')
-        parts.append({
-            "inline_data": {
-                "mime_type": image_file.content_type,
-                "data": image_data
-            }
-        })
+    # הנחיה משופרת לדיוק גיאולוגי - המנוע של זיהוי הסלעים
+    prompt_text = f"אתה מורה מקצועי לגיאוגרפיה והיסטוריה, ומומחה לגיאולוגיה. " \
+                  f"ענה בשפה שבה נשאלת. אם נשלחה תמונה של סלע, אבן או מאובן, " \
+                  f"נתח את הטקסטורה, הצבע, וההרכב המינרלוגי הנראה לעין וזהה את שם הסלע בדיוק מרבי. " \
+                  f"הסבר גם כיצד הוא נוצר. השאלה: {user_input}"
 
+    # בניית גוף הבקשה (Payload)
     payload = {
         "contents": [{
-            "parts": parts
+            "parts": [
+                {"text": prompt_text}
+            ]
         }]
     }
+    
+    # הוספת התמונה לבקשה בפורמט Base64 אם קיימת
+    if image_file:
+        try:
+            image_data = base64.b64encode(image_file.read()).decode('utf-8')
+            payload["contents"][0]["parts"].append({
+                "inline_data": {
+                    "mime_type": image_file.content_type,
+                    "data": image_data
+                }
+            })
+        except Exception as e:
+            print(f"Error encoding image: {e}")
 
     try:
         response = requests.post(url, json=payload, headers=headers)
@@ -72,14 +82,18 @@ def chat():
 
         if response.status_code == 200:
             reply = data['candidates'][0]['content']['parts'][0]['text']
+            
+            # שמירה במסד נתונים (שימוש ב-try כדי שלא יפיל את הצ'אט אם יש תקלה ב-DB)
             try:
                 db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input or "תמונה", reply)
             except:
                 pass
+                
             return jsonify({"reply": reply})
         else:
             error_details = data.get('error', {}).get('message', 'Unknown Error')
             return jsonify({"reply": f"שגיאה מגוגל: {error_details}"}), response.status_code
+
     except Exception as e:
         return jsonify({"reply": f"תקלה בחיבור: {str(e)}"}), 500
         
