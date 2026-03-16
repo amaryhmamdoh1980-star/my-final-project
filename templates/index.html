@@ -12,22 +12,22 @@
         * { box-sizing: border-box; }
         body { font-family: 'Assistant', sans-serif; background: var(--bg); margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
-        /* Header */
-        #header { background: var(--primary); color: white; padding: 10px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 10; }
-        .header-left { display: flex; align-items: center; gap: 10px; }
-        .logo { width: 35px; height: 35px; border-radius: 50%; background: white; }
-        .header-gif { width: 50px; height: 35px; border-radius: 5px; object-fit: cover; }
+        #header { background: var(--primary); color: white; padding: 8px 15px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 10; }
+        .header-left { display: flex; align-items: center; gap: 10px; flex: 1; justify-content: center; }
         
-        /* Language Switcher */
+        /* עיצוב תמונת הפרופיל החדשה */
+        .profile-link { display: flex; align-items: center; text-decoration: none; }
+        .profile-img { width: 45px; height: 45px; border-radius: 50%; border: 2px solid white; object-fit: cover; background: white; }
+        
+        .logo-main { width: 35px; height: 35px; border-radius: 50%; background: white; }
+
         .lang-switcher { display: flex; gap: 5px; background: rgba(0,0,0,0.1); padding: 5px; border-radius: 15px; }
         .lang-btn { background: none; border: none; color: white; cursor: pointer; font-size: 11px; opacity: 0.6; padding: 2px 6px; }
         .lang-btn.active { opacity: 1; font-weight: bold; border-bottom: 2px solid white; }
 
-        /* Chat */
         #chat-window { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); }
         .message { max-width: 85%; padding: 10px 15px; border-radius: 15px; font-size: 16px; line-height: 1.4; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         
-        /* כיווניות */
         .rtl .user { align-self: flex-start; background: var(--user); border-top-left-radius: 2px; }
         .rtl .bot { align-self: flex-end; background: var(--bot); border-top-right-radius: 2px; }
         .ltr .user { align-self: flex-end; background: var(--user); border-top-right-radius: 2px; }
@@ -36,7 +36,6 @@
         .msg-tools { margin-top: 5px; border-top: 1px solid #eee; padding-top: 5px; }
         .speak-btn { background: #f0f0f0; border: 1px solid #ccc; border-radius: 10px; cursor: pointer; font-size: 12px; padding: 2px 8px; }
 
-        /* Input Area */
         #input-area { background: #f0f0f0; padding: 10px; border-top: 1px solid #ccc; }
         .input-row { display: flex; gap: 8px; align-items: center; }
         #user-input { flex: 1; padding: 12px; border-radius: 25px; border: 1px solid white; outline: none; }
@@ -51,16 +50,21 @@
 
     <div id="header">
         <button class="icon-only" style="color:white" onclick="downloadChat()"><i class="fas fa-file-pdf"></i></button>
+        
         <div class="header-left">
-            <a href="https://sites.google.com/view/geology-info/" target="_blank"><img src="/static/icon.png" class="logo"></a>
-            <span id="txt-title" style="font-weight:bold">המורה החכם</span>
+            <a href="https://sites.google.com/view/geology-info/" target="_blank"><img src="/static/icon.png" class="logo-main"></a>
+            <span id="txt-title" style="font-weight:bold; margin: 0 10px;">המורה החכם</span>
             <div class="lang-switcher">
                 <button class="lang-btn active" id="l-he" onclick="setLanguage('he')">HE</button>
                 <button class="lang-btn" id="l-ar" onclick="setLanguage('ar')">AR</button>
                 <button class="lang-btn" id="l-en" onclick="setLanguage('en')">EN</button>
             </div>
         </div>
-        <img src="/static/uploads/tumblr_static_tumblr_ck5wlz6qil4ccsgw04cwwocsw_640.gif" class="header-gif">
+
+        <!-- התמונה החדשה עם הקישור לדף מי אני -->
+        <a href="https://sites.google.com/view/geology-info/%D7%91%D7%99%D7%AA/%D7%9E%D7%99-%D7%90%D7%A0%D7%99?authuser=0" target="_blank" class="profile-link">
+            <img src="/static/uploads/images (2).jfif" class="profile-img" alt="מי אני">
+        </a>
     </div>
 
     <div id="chat-window">
@@ -69,7 +73,7 @@
 
     <div id="input-area">
         <div id="preview-box">
-            <img id="preview-img">
+            <img id="preview-img-src" style="max-height: 70px; border-radius: 5px;">
             <button onclick="cancelImage()" style="position:absolute; background:red; color:white; border-radius:50%; border:none; width:20px; height:20px; cursor:pointer">×</button>
         </div>
         <div class="input-row">
@@ -104,7 +108,7 @@
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
                 reader.onload = e => { 
-                    document.getElementById('preview-img').src = e.target.result;
+                    document.getElementById('preview-img-src').src = e.target.result;
                     document.getElementById('preview-box').style.display = 'block';
                 };
                 reader.readAsDataURL(input.files[0]);
@@ -123,12 +127,11 @@
             const file = fileIn.files[0];
             if (!text && !file) return;
 
-            // הוספת הודעת משתמש
             const userDiv = document.createElement('div');
             userDiv.className = 'message user';
             if (file) {
                 const img = document.createElement('img');
-                img.src = document.getElementById('preview-img').src;
+                img.src = document.getElementById('preview-img-src').src;
                 img.style.maxWidth = "100%"; img.style.borderRadius = "10px";
                 userDiv.appendChild(img);
             }
@@ -137,7 +140,9 @@
             userDiv.appendChild(txtDiv);
             win.appendChild(userDiv);
             
-            input.value = ''; cancelImage();
+            input.value = ''; 
+            const currentImgData = document.getElementById('preview-img-src').src;
+            cancelImage();
             win.scrollTop = win.scrollHeight;
 
             const formData = new FormData();
@@ -181,12 +186,15 @@
             doc.save("chat.pdf");
         }
 
-        // Voice Recognition
         const mic = document.getElementById('mic-btn');
         const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (Rec) {
             const r = new Rec();
-            mic.onclick = () => { r.lang = ui[currentLang].lang; r.start(); mic.style.color = 'red'; };
+            mic.onclick = () => { 
+                r.lang = ui[currentLang].lang; 
+                r.start(); 
+                mic.style.color = 'red'; 
+            };
             r.onresult = e => document.getElementById('user-input').value = e.results[0][0].transcript;
             r.onend = () => mic.style.color = '#54656f';
         }
