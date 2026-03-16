@@ -41,9 +41,8 @@ def chat():
     if not user_input:
         return jsonify({"reply": "לא נשלחה הודעה"}), 400
 
-    # שינוי המודל ל-gemini-2.0-flash (מה שהופיע לך ב-JSON)
-    # מעבר למודל 2.5 פלאש - המודל הראשון שהופיע ברשימה שעבדה לך
-url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
+    # שימוש במודל 2.5 פלאש כפי שראינו ברשימה שלך
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
     
     headers = {'Content-Type': 'application/json'}
     
@@ -59,21 +58,5 @@ url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash
 
         if response.status_code == 200:
             reply = data['candidates'][0]['content']['parts'][0]['text']
-            
             try:
-                db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input, reply)
-            except:
-                pass
-            
-            return jsonify({"reply": reply})
-        else:
-            # אם גוגל מחזירה שגיאה, נציג אותה כדי להבין מה קורה
-            error_msg = data.get('error', {}).get('message', 'Unknown Error')
-            return jsonify({"reply": f"שגיאה מגוגל ({response.status_code}): {error_msg}"}), response.status_code
-
-    except Exception as e:
-        return jsonify({"reply": f"תקלה בחיבור: {str(e)}"}), 500
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
+                db.execute("INSERT INTO history (user_message,
