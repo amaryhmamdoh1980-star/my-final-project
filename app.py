@@ -48,14 +48,13 @@ def chat():
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
     headers = {'Content-Type': 'application/json'}
     
-   # הנחיה משופרת לדיוק גיאולוגי ויכולת ציור SVG
-   prompt_text = f"""
+    # הנחיה משופרת לדיוק גיאולוגי ויכולת ציור SVG
+    prompt_text = f"""
     אתה מורה מקצועי לגיאוגרפיה, היסטוריה וגיאולוגיה. 
     ענה אך ורק בשפה שבה נשאלת.
     
     1. אם נשלחה תמונה של סלע: נתח וזהה אותו.
     2. אם התבקשת לצייר מפה או תרשים: השתמש בקוד SVG פשוט ובסיסי ביותר. 
-       אל תשתמש באלפי נקודות, אלא בקווים כלליים.
        הקוד חייב להתחיל ב-<svg> ולהסתיים ב-</svg>.
     
     השאלה של המשתמש: {user_input}
@@ -64,9 +63,7 @@ def chat():
     # בניית גוף הבקשה (Payload)
     payload = {
         "contents": [{
-            "parts": [
-                {"text": prompt_text}
-            ]
+            "parts": [{"text": prompt_text}]
         }]
     }
     
@@ -90,7 +87,7 @@ def chat():
         if response.status_code == 200:
             reply = data['candidates'][0]['content']['parts'][0]['text']
             
-            # שמירה במסד נתונים (שימוש ב-try כדי שלא יפיל את הצ'אט אם יש תקלה ב-DB)
+            # שמירה במסד נתונים
             try:
                 db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input or "תמונה", reply)
             except:
