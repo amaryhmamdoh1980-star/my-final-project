@@ -1,6 +1,11 @@
 {
-  "short_name": "SmartTeacher",
-  "name": "The Smart Geography & History Teacher",
+  "name": "המורה החכם - גיאוגרפיה והיסטוריה",
+  "short_name": "המורה החכם",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#e5ddd5",
+  "theme_color": "#075e54",
+  "description": "צ'אט בוט חכם ללמידת גיאוגרפיה והיסטוריה",
   "icons": [
     {
       "src": "/static/icon.png",
@@ -8,14 +13,9 @@
       "type": "image/png"
     },
     {
-      "src": "/static/icon-512.png",
+      "src": "/static/icon.png",
       "sizes": "512x512",
       "type": "image/png"
     }
-  ],
-  "start_url": "/",
-  "background_color": "#ffffff",
-  "display": "standalone",
-  "scope": "/",
-  "theme_color": "#25D366"
+  ]
 }

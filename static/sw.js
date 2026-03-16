@@ -1,8 +1,8 @@
 self.addEventListener('install', (e) => {
-  console.log('Service Worker: Installed');
+  console.log('Service Worker Installed');
 });
 
 self.addEventListener('fetch', (e) => {
-  // כאן אפשר להוסיף יכולות אופליין בעתיד, כרגע זה רק לצורך הגדרת האפליקציה
+  // מאפשר לאפליקציה לעבוד אונליין
   e.respondWith(fetch(e.request));
 });

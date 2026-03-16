@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>המורה החכם</title>
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#075e54">
+    <link rel="apple-touch-icon" href="/static/icon.png">
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -86,6 +89,14 @@
     </div>
 
     <script>
+         // מיד כאן בתחילת הסקריפט
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/sw.js')
+                .then(reg => console.log('App ready to be installed'))
+                .catch(err => console.log('Service worker error', err));
+            });
+        }
         const ui = {
             he: { title: "המורה החכם", input: "הקלד שאלה...", welcome: "שלום! איך אוכל לעזור היום?", speak: "הקרא", stop: "עצור", dir: "rtl", lang: "he-IL" },
             ar: { title: "المعلم الذكي", input: "اكتب سؤالاً...", welcome: "مرحباً! كيف يمكنني مساعدتك اليوم؟", speak: "استماع", stop: "توقف", dir: "rtl", lang: "ar-SA" },
@@ -172,10 +183,38 @@
                     return;
                 }
             }
-            const msg = new SpeechSynthesisUtterance(text);
-            msg.lang = (/[א-ת]/.test(text)) ? 'he-IL' : (/[أ-ي]/.test(text) ? 'ar-SA' : 'en-US');
+
+            // 1. ניקוי הטקסט מכוכביות וסימני Markdown שמשבשים את ההקראה
+            let cleanText = text.replace(/\*/g, "").replace(/#/g, "").trim();
+
+            const msg = new SpeechSynthesisUtterance(cleanText);
+
+            // 2. זיהוי שפה מדויק יותר
+            const isHebrew = /[א-ת]/.test(cleanText);
+            const isArabic = /[\u0600-\u06FF]/.test(cleanText);
+
+            if (isHebrew) {
+                msg.lang = 'he-IL';
+            } else if (isArabic) {
+                msg.lang = 'ar-SA'; // אפשר לנסות גם 'ar-EG' אם לא עובד טוב
+            } else {
+                msg.lang = 'en-US';
+            }
+
+            // 3. ניסיון למצוא קול איכותי שמתאים לשפה (חשוב במיוחד לערבית)
+            const voices = window.speechSynthesis.getVoices();
+            const targetVoice = voices.find(v => v.lang.startsWith(msg.lang.split('-')[0]));
+            if (targetVoice) {
+                msg.voice = targetVoice;
+            }
+
+            // הגדרות מהירות וטון כדי שזה יישמע אנושי יותר
+            msg.rate = 0.9; // קצת יותר לאט כדי שיהיה ברור
+            msg.pitch = 1.0;
+
             msg.onstart = () => btn.innerText = ui[currentLang].stop;
             msg.onend = () => btn.innerText = ui[currentLang].speak;
+            
             window.speechSynthesis.speak(msg);
         }
 
