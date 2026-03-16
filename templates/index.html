@@ -23,7 +23,16 @@
     height: 100dvh; /* זה התיקון שמוודא שהכל נכנס למסך בטלפון */
     overflow: hidden; 
 }
-        
+.svg-container { 
+        background: white; 
+        border-radius: 10px; 
+        padding: 10px; 
+        margin-bottom: 10px; 
+        box-shadow: inset 0 0 5px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    .svg-container svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+
         #header { background: var(--primary); color: white; padding: 8px 15px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 10; }
         .header-left { display: flex; align-items: center; gap: 10px; flex: 1; justify-content: center; }
         
@@ -193,7 +202,28 @@
         function addBotMessage(text) {
             const div = document.createElement('div');
             div.className = 'message bot';
-            div.innerHTML = `<div>${text}</div><div class="msg-tools"><button class="speak-btn" onclick="handleVoice(this, \`${text.replace(/`/g, "")}\`)">${ui[currentLang].speak}</button></div>`;
+            
+            // בדיקה אם התשובה מכילה קוד SVG (ציור/מפה)
+            if (text.includes("<svg")) {
+                // ניקוי סימני Markdown שגוגל לפעמים מוסיפה מסביב לקוד
+                let cleanSVG = text.replace(/```svg/g, "").replace(/```/g, "").trim();
+                div.innerHTML = `<div class="svg-container">${cleanSVG}</div>`;
+            } else {
+                const txtDiv = document.createElement('div');
+                txtDiv.innerText = text;
+                div.appendChild(txtDiv);
+            }
+
+            // הוספת כפתור ההקראה
+            const tools = document.createElement('div');
+            tools.className = 'msg-tools';
+            const speakBtn = document.createElement('button');
+            speakBtn.className = 'speak-btn';
+            speakBtn.innerText = ui[currentLang].speak;
+            speakBtn.onclick = () => handleVoice(speakBtn, text);
+            tools.appendChild(speakBtn);
+            div.appendChild(tools);
+
             win.appendChild(div);
             win.scrollTop = win.scrollHeight;
         }
