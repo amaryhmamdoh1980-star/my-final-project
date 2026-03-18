@@ -147,15 +147,63 @@
             const win = document.getElementById('chat-window');
             const div = document.createElement('div');
             div.className = 'message bot';
-            div.innerHTML = `<div>${text}</div><button class="icon-only" style="font-size:14px; margin-top:5px;" onclick="handleVoice(this, \`${text.replace(/`/g, "")}\`)"><i class="fas fa-volume-up"></i></button>`;
+            
+            // הצגת הטקסט בצורה בטוחה (innerText מונע שגיאות קוד)
+            const txtDiv = document.createElement('div');
+            txtDiv.innerText = text;
+            div.appendChild(txtDiv);
+
+            // יצירת אזור כלי ההודעה
+            const tools = document.createElement('div');
+            tools.className = 'msg-tools';
+            
+            const btn = document.createElement('button');
+            btn.className = 'icon-only';
+            btn.style.fontSize = '16px';
+            btn.style.marginTop = '8px';
+            btn.style.cursor = 'pointer';
+            btn.innerHTML = '<i class="fas fa-volume-up"></i>';
+            
+            // חיבור ישיר של הפונקציה (זה הסוד שמונע את התקלה!)
+            btn.onclick = function() {
+                handleVoice(btn, text);
+            };
+            
+            tools.appendChild(btn);
+            div.appendChild(tools);
+
             win.appendChild(div);
             win.scrollTop = win.scrollHeight;
         }
 
         function handleVoice(btn, text) {
-            window.speechSynthesis.cancel();
-            const msg = new SpeechSynthesisUtterance(text.replace(/\*/g, ""));
-            msg.lang = (/[א-ת]/.test(text)) ? 'he-IL' : (/[أ-ي]/.test(text) ? 'ar-SA' : 'en-US');
+            // אם המחשב כבר מדבר - לחיצה נוספת תעצור אותו
+            if (window.speechSynthesis.speaking) {
+                window.speechSynthesis.cancel();
+                btn.style.color = '#54656f'; // צבע רגיל
+                return;
+            }
+
+            // ניקוי סימנים שגורמים לרעשים (כמו כוכביות)
+            const cleanText = text.replace(/\*/g, "").trim();
+            const msg = new SpeechSynthesisUtterance(cleanText);
+
+            // זיהוי שפה אוטומטי
+            const isHebrew = /[א-ת]/.test(cleanText);
+            const isArabic = /[\u0600-\u06FF]/.test(cleanText);
+
+            if (isHebrew) {
+                msg.lang = 'he-IL';
+            } else if (isArabic) {
+                msg.lang = 'ar-SA';
+            } else {
+                msg.lang = 'en-US';
+            }
+
+            // שינוי צבע לאדום בזמן שהמורה מדבר
+            msg.onstart = () => btn.style.color = 'red';
+            msg.onend = () => btn.style.color = '#54656f';
+            
             window.speechSynthesis.speak(msg);
         }
 
