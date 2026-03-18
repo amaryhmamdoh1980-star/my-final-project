@@ -1,6 +1,7 @@
 import os
 import requests
 import base64
+import json
 from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
@@ -28,8 +29,6 @@ class DB:
         return None
 
 db = DB()
-
-# --- Gemini API Config ---
 API_KEY = os.environ.get("GOOGLE_API_KEY")
 
 @app.route("/")
@@ -39,46 +38,51 @@ def index():
 @app.route("/chat", methods=["POST"])
 def chat():
     user_input = request.form.get("message", "")
-    image_file = request.files.get("image")  # קבלת הקובץ מהטופס
-    
-    if not user_input and not image_file:
-        return jsonify({"reply": "לא נשלחה הודעה או תמונה"}), 400
+    image_file = request.files.get("image")
+    # קבלת היסטוריית השיחה מהצד של הלקוח
+    history_raw = request.form.get("history", "[]")
+    try:
+        history = json.loads(history_raw)
+    except:
+        history = []
 
-    # המודל שעבד לנו מצוין
+    # הגדרת המודל - משתמשים ב-2.5 פלאש לפי בקשתך
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
     headers = {'Content-Type': 'application/json'}
     
-    # הנחיה משופרת לדיוק גיאולוגי ויכולת ציור SVG
-    prompt_text = f"""
-    אתה מורה מקצועי לגיאוגרפיה, היסטוריה וגיאולוגיה. 
-    ענה אך ורק בשפה שבה נשאלת.
-    
-    1. אם נשלחה תמונה של סלע: נתח וזהה אותו.
-    2. אם התבקשת לצייר מפה או תרשים: השתמש בקוד SVG פשוט ובסיסי ביותר. 
-       הקוד חייב להתחיל ב-<svg> ולהסתיים ב-</svg>.
-    
-    השאלה של המשתמש: {user_input}
+    # הנחיית מערכת חכמה
+    system_instruction = """
+    אתה 'המורה החכם' - מומחה להוראת גיאוגרפיה והיסטוריה, בדגש על תוכנית הלימודים לבגרות בישראל.
+    1. ענה תמיד בשפה שבה פנו אליך (עברית או ערבית).
+    2. שמור על הקשר: השתמש בהיסטוריית השיחה כדי לענות על שאלות המשך.
+    3. אם נשלחה תמונה (מפה, סלע, מסמך): נתח אותה לעומק בהקשר הלימודי.
+    4. הסבר מושגים מורכבים בצורה פשוטה, עם דוגמאות שיעזרו בבחינה.
     """
 
-    # בניית גוף הבקשה (Payload)
-    payload = {
-        "contents": [{
-            "parts": [{"text": prompt_text}]
-        }]
-    }
+    # בניית מבנה השיחה עבור Gemini
+    contents = []
+    # הוספת היסטוריה (רק טקסט לזיכרון)
+    for msg in history:
+        contents.append({
+            "role": "user" if msg['role'] == "user" else "model",
+            "parts": [{"text": msg['text']}]
+        })
+
+    # הוספת ההודעה הנוכחית עם ההנחיה
+    current_user_parts = [{"text": system_instruction + "\n\nהשאלה הנוכחית: " + user_input}]
     
-    # הוספת התמונה לבקשה בפורמט Base64 אם קיימת
     if image_file:
-        try:
-            image_data = base64.b64encode(image_file.read()).decode('utf-8')
-            payload["contents"][0]["parts"].append({
-                "inline_data": {
-                    "mime_type": image_file.content_type,
-                    "data": image_data
-                }
-            })
-        except Exception as e:
-            print(f"Error encoding image: {e}")
+        image_data = base64.b64encode(image_file.read()).decode('utf-8')
+        current_user_parts.append({
+            "inline_data": {
+                "mime_type": image_file.content_type,
+                "data": image_data
+            }
+        })
+    
+    contents.append({"role": "user", "parts": current_user_parts})
+
+    payload = {"contents": contents}
 
     try:
         response = requests.post(url, json=payload, headers=headers)
@@ -86,21 +90,15 @@ def chat():
 
         if response.status_code == 200:
             reply = data['candidates'][0]['content']['parts'][0]['text']
-            
-            # שמירה במסד נתונים
             try:
-                db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input or "תמונה", reply)
-            except:
-                pass
-                
+                db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input or "מדיה", reply)
+            except: pass
             return jsonify({"reply": reply})
         else:
-            error_details = data.get('error', {}).get('message', 'Unknown Error')
-            return jsonify({"reply": f"שגיאה מגוגל: {error_details}"}), response.status_code
-
+            return jsonify({"reply": f"שגיאה מהמורה: {data.get('error', {}).get('message', 'נסה שוב')}"}), response.status_code
     except Exception as e:
-        return jsonify({"reply": f"תקלה בחיבור: {str(e)}"}), 500
-        
+        return jsonify({"reply": f"תקלה בתקשורת: {str(e)}"}), 500
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)

@@ -3,107 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>המורה החכם</title>
-    <link rel="manifest" href="/static/manifest.json">
-    <meta name="theme-color" content="#075e54">
-    <link rel="apple-touch-icon" href="/static/icon.png">
+    <title>המורה החכם - הכנה לבגרות</title>
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         :root { --primary: #075e54; --bg: #e5ddd5; --user: #dcf8c6; --bot: #ffffff; }
-        * { box-sizing: border-box; }
-        body { 
-    font-family: 'Assistant', sans-serif; 
-    background: var(--bg); 
-    margin: 0; 
-    display: flex; 
-    flex-direction: column; 
-    height: 100vh; 
-    height: 100dvh; /* זה התיקון שמוודא שהכל נכנס למסך בטלפון */
-    overflow: hidden; 
-}
-.svg-container { 
-        background: white; 
-        border-radius: 10px; 
-        padding: 10px; 
-        margin-bottom: 10px; 
-        box-shadow: inset 0 0 5px rgba(0,0,0,0.1);
-        overflow: hidden;
-    }
-    .svg-container svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
-
-        #header { background: var(--primary); color: white; padding: 8px 15px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 10; }
+        body { font-family: 'Assistant', sans-serif; background: var(--bg); margin: 0; display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
+        #header { background: var(--primary); color: white; padding: 10px 15px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 10; }
         .header-left { display: flex; align-items: center; gap: 10px; flex: 1; justify-content: center; }
-        
-        /* עיצוב תמונת הפרופיל החדשה */
-        #chat-window { 
-    flex: 1; 
-    overflow-y: auto; 
-    padding: 15px; 
-    display: flex; 
-    flex-direction: column; 
-    gap: 10px; 
-    background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); 
-}
-        .profile-img { width: 45px; height: 45px; border-radius: 50%; border: 2px solid white; object-fit: cover; background: white; }
-        
-        .logo-main { width: 35px; height: 35px; border-radius: 50%; background: white; }
-
+        .profile-img { width: 45px; height: 45px; border-radius: 50%; border: 2px solid white; object-fit: cover; }
         .lang-switcher { display: flex; gap: 5px; background: rgba(0,0,0,0.1); padding: 5px; border-radius: 15px; }
-        .lang-btn { background: none; border: none; color: white; cursor: pointer; font-size: 11px; opacity: 0.6; padding: 2px 6px; }
+        .lang-btn { background: none; border: none; color: white; cursor: pointer; font-size: 11px; opacity: 0.6; }
         .lang-btn.active { opacity: 1; font-weight: bold; border-bottom: 2px solid white; }
-
         #chat-window { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); }
-        .message { max-width: 85%; padding: 10px 15px; border-radius: 15px; font-size: 16px; line-height: 1.4; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-        
+        .message { max-width: 85%; padding: 12px; border-radius: 15px; font-size: 16px; line-height: 1.4; box-shadow: 0 1px 2px rgba(0,0,0,0.1); white-space: pre-wrap; word-wrap: break-word; }
         .rtl .user { align-self: flex-start; background: var(--user); border-top-left-radius: 2px; }
         .rtl .bot { align-self: flex-end; background: var(--bot); border-top-right-radius: 2px; }
         .ltr .user { align-self: flex-end; background: var(--user); border-top-right-radius: 2px; }
         .ltr .bot { align-self: flex-start; background: var(--bot); border-top-left-radius: 2px; }
-
-        .msg-tools { margin-top: 5px; border-top: 1px solid #eee; padding-top: 5px; }
-        .speak-btn { background: #f0f0f0; border: 1px solid #ccc; border-radius: 10px; cursor: pointer; font-size: 12px; padding: 2px 8px; }
-
-        #input-area { 
-    background: #f0f0f0; 
-    padding: 10px; 
-    border-top: 1px solid #ccc; 
-    flex-shrink: 0; 
-    padding-bottom: calc(10px + env(safe-area-inset-bottom));
-}
+        #input-area { background: #f0f0f0; padding: 10px; border-top: 1px solid #ccc; flex-shrink: 0; padding-bottom: env(safe-area-inset-bottom); }
         .input-row { display: flex; gap: 8px; align-items: center; }
-        #user-input { flex: 1; padding: 12px; border-radius: 25px; border: 1px solid white; outline: none; }
+        #user-input { flex: 1; padding: 12px; border-radius: 25px; border: 1px solid white; outline: none; font-size: 16px; }
         .btn-round { background: var(--primary); color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .icon-only { background: none; border: none; font-size: 22px; color: #54656f; cursor: pointer; }
-        
         #preview-box { display: none; padding: 5px; text-align: center; position: relative; }
-        #preview-img { max-height: 70px; border-radius: 5px; border: 1px solid var(--primary); }
+        @media print { body * { visibility: hidden; } #chat-window, #chat-window * { visibility: visible; } #chat-window { position: absolute; left: 0; top: 0; width: 100%; height: auto; overflow: visible; } .icon-only, .lang-switcher { display: none; } }
     </style>
 </head>
 <body class="rtl" id="app-body">
-
     <div id="header">
         <button class="icon-only" style="color:white" onclick="downloadChat()"><i class="fas fa-file-pdf"></i></button>
-        
         <div class="header-left">
-            <a href="https://sites.google.com/view/geology-info/" target="_blank"><img src="/static/icon.png" class="logo-main"></a>
-            <span id="txt-title" style="font-weight:bold; margin: 0 10px;">המורה החכם</span>
+            <a href="https://sites.google.com/view/geology-info/" target="_blank"><img src="/static/icon.png" style="width:35px; background:white; border-radius:50%"></a>
+            <span id="txt-title" style="font-weight:bold">המורה החכם</span>
             <div class="lang-switcher">
                 <button class="lang-btn active" id="l-he" onclick="setLanguage('he')">HE</button>
                 <button class="lang-btn" id="l-ar" onclick="setLanguage('ar')">AR</button>
                 <button class="lang-btn" id="l-en" onclick="setLanguage('en')">EN</button>
             </div>
         </div>
-
-        <!-- התמונה החדשה עם הקישור לדף מי אני -->
-        <a href="https://sites.google.com/view/geology-info/%D7%91%D7%99%D7%AA/%D7%9E%D7%99-%D7%90%D7%A0%D7%99?authuser=0" target="_blank" class="profile-link">
-            <img src="/static/uploads/images (2).jfif" class="profile-img" alt="מי אני">
+        <a href="https://sites.google.com/view/geology-info/%D7%91%D7%99%D7%AA/%D7%9E%D7%99-%D7%90%D7%A0%D7%99?authuser=0" target="_blank">
+            <img src="/static/uploads/images (2).jfif" class="profile-img">
         </a>
     </div>
 
     <div id="chat-window">
-        <div class="message bot" id="txt-welcome">שלום! אני המורה החכם לגיאוגרפיה והיסטוריה. איך אוכל לעזור לך היום?</div>
+        <div class="message bot" id="txt-welcome">שלום! אני המורה החכם לבגרויות. איך אוכל לעזור לך היום?</div>
     </div>
 
     <div id="input-area">
@@ -121,29 +66,20 @@
     </div>
 
     <script>
-         // מיד כאן בתחילת הסקריפט
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/static/sw.js')
-                .then(reg => console.log('App ready to be installed'))
-                .catch(err => console.log('Service worker error', err));
-            });
-        }
         const ui = {
-            he: { title: "המורה החכם", input: "הקלד שאלה...", welcome: "שלום! איך אוכל לעזור היום?", speak: "הקרא", stop: "עצור", dir: "rtl", lang: "he-IL" },
-            ar: { title: "المعلم الذكي", input: "اكتب سؤالاً...", welcome: "مرحباً! كيف يمكنني مساعدتك اليوم؟", speak: "استماع", stop: "توقف", dir: "rtl", lang: "ar-SA" },
-            en: { title: "Smart Teacher", input: "Type a question...", welcome: "Hello! How can I help you today?", speak: "Speak", stop: "Stop", dir: "ltr", lang: "en-US" }
+            he: { title: "המורה החכם", input: "הקלד שאלה...", speak: "הקרא", stop: "עצור", dir: "rtl", lang: "he-IL" },
+            ar: { title: "المعلم الذكي", input: "اكتب سؤالاً...", speak: "استماع", stop: "توقف", dir: "rtl", lang: "ar-SA" },
+            en: { title: "Smart Teacher", input: "Type a question...", speak: "Speak", stop: "Stop", dir: "ltr", lang: "en-US" }
         };
 
         let currentLang = 'he';
-        const win = document.getElementById('chat-window');
+        let conversationHistory = []; // כאן נשמר הזיכרון
 
         function setLanguage(lang) {
             currentLang = lang;
-            const t = ui[lang];
-            document.getElementById('txt-title').innerText = t.title;
-            document.getElementById('user-input').placeholder = t.input;
-            document.getElementById('app-body').className = t.dir;
+            document.getElementById('txt-title').innerText = ui[lang].title;
+            document.getElementById('user-input').placeholder = ui[lang].input;
+            document.getElementById('app-body').className = ui[lang].dir;
             document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.id === 'l-'+lang));
         }
 
@@ -170,6 +106,8 @@
             const file = fileIn.files[0];
             if (!text && !file) return;
 
+            // הצגת הודעת משתמש
+            const win = document.getElementById('chat-window');
             const userDiv = document.createElement('div');
             userDiv.className = 'message user';
             if (file) {
@@ -182,113 +120,56 @@
             txtDiv.innerText = text;
             userDiv.appendChild(txtDiv);
             win.appendChild(userDiv);
-            
-            input.value = ''; 
-            const currentImgData = document.getElementById('preview-img-src').src;
-            cancelImage();
             win.scrollTop = win.scrollHeight;
 
+            // הכנת נתונים לשליחה
             const formData = new FormData();
             formData.append('message', text);
             if (file) formData.append('image', file);
+            formData.append('history', JSON.stringify(conversationHistory));
+
+            input.value = ''; cancelImage();
 
             try {
                 const res = await fetch('/chat', { method: 'POST', body: formData });
                 const data = await res.json();
+                
+                // עדכון הזיכרון (שומרים את 10 ההודעות האחרונות)
+                conversationHistory.push({role: "user", text: text});
+                conversationHistory.push({role: "model", text: data.reply});
+                if (conversationHistory.length > 10) conversationHistory.shift();
+
                 addBotMessage(data.reply);
-            } catch (e) { addBotMessage("Error connecting to server."); }
+            } catch (e) { addBotMessage("מצטער, חלה שגיאה בתקשורת עם השרת."); }
         }
 
         function addBotMessage(text) {
+            const win = document.getElementById('chat-window');
             const div = document.createElement('div');
             div.className = 'message bot';
-            
-            // בדיקה אם התשובה מכילה קוד SVG (ציור/מפה)
-            if (text.includes("<svg")) {
-                // ניקוי סימני Markdown שגוגל לפעמים מוסיפה מסביב לקוד
-                let cleanSVG = text.replace(/```svg/g, "").replace(/```/g, "").trim();
-                div.innerHTML = `<div class="svg-container">${cleanSVG}</div>`;
-            } else {
-                const txtDiv = document.createElement('div');
-                txtDiv.innerText = text;
-                div.appendChild(txtDiv);
-            }
-
-            // הוספת כפתור ההקראה
-            const tools = document.createElement('div');
-            tools.className = 'msg-tools';
-            const speakBtn = document.createElement('button');
-            speakBtn.className = 'speak-btn';
-            speakBtn.innerText = ui[currentLang].speak;
-            speakBtn.onclick = () => handleVoice(speakBtn, text);
-            tools.appendChild(speakBtn);
-            div.appendChild(tools);
-
+            div.innerHTML = `<div>${text}</div><button class="icon-only" style="font-size:14px; margin-top:5px;" onclick="handleVoice(this, \`${text.replace(/`/g, "")}\`)"><i class="fas fa-volume-up"></i></button>`;
             win.appendChild(div);
             win.scrollTop = win.scrollHeight;
         }
 
         function handleVoice(btn, text) {
-            if (window.speechSynthesis.speaking) {
-                window.speechSynthesis.cancel();
-                if (btn.innerText === ui[currentLang].stop) {
-                    btn.innerText = ui[currentLang].speak;
-                    return;
-                }
-            }
-
-            // 1. ניקוי הטקסט מכוכביות וסימני Markdown שמשבשים את ההקראה
-            let cleanText = text.replace(/\*/g, "").replace(/#/g, "").trim();
-
-            const msg = new SpeechSynthesisUtterance(cleanText);
-
-            // 2. זיהוי שפה מדויק יותר
-            const isHebrew = /[א-ת]/.test(cleanText);
-            const isArabic = /[\u0600-\u06FF]/.test(cleanText);
-
-            if (isHebrew) {
-                msg.lang = 'he-IL';
-            } else if (isArabic) {
-                msg.lang = 'ar-SA'; // אפשר לנסות גם 'ar-EG' אם לא עובד טוב
-            } else {
-                msg.lang = 'en-US';
-            }
-
-            // 3. ניסיון למצוא קול איכותי שמתאים לשפה (חשוב במיוחד לערבית)
-            const voices = window.speechSynthesis.getVoices();
-            const targetVoice = voices.find(v => v.lang.startsWith(msg.lang.split('-')[0]));
-            if (targetVoice) {
-                msg.voice = targetVoice;
-            }
-
-            // הגדרות מהירות וטון כדי שזה יישמע אנושי יותר
-            msg.rate = 0.9; // קצת יותר לאט כדי שיהיה ברור
-            msg.pitch = 1.0;
-
-            msg.onstart = () => btn.innerText = ui[currentLang].stop;
-            msg.onend = () => btn.innerText = ui[currentLang].speak;
-            
+            window.speechSynthesis.cancel();
+            const msg = new SpeechSynthesisUtterance(text.replace(/\*/g, ""));
+            msg.lang = (/[א-ת]/.test(text)) ? 'he-IL' : (/[أ-ي]/.test(text) ? 'ar-SA' : 'en-US');
             window.speechSynthesis.speak(msg);
         }
 
         function downloadChat() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            doc.text("Chat History", 10, 10);
-            doc.save("chat.pdf");
+            window.print(); // הדרך הטובה ביותר לשמור PDF עם תמיכה מלאה בעברית וערבית
         }
 
-        const mic = document.getElementById('mic-btn');
-        const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (Rec) {
-            const r = new Rec();
-            mic.onclick = () => { 
-                r.lang = ui[currentLang].lang; 
-                r.start(); 
-                mic.style.color = 'red'; 
-            };
+        const micBtn = document.getElementById('mic-btn');
+        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRec) {
+            const r = new SpeechRec();
+            micBtn.onclick = () => { r.lang = ui[currentLang].lang; r.start(); micBtn.style.color = 'red'; };
             r.onresult = e => document.getElementById('user-input').value = e.results[0][0].transcript;
-            r.onend = () => mic.style.color = '#54656f';
+            r.onend = () => micBtn.style.color = '#54656f';
         }
     </script>
 </body>
