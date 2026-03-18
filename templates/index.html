@@ -70,118 +70,109 @@
     </div>
 
     <script>
-        // הגדרת marked שקישורים ייפתחו בדף חדש (קריטי לאפליקציה)
-        const renderer = new marked.Renderer();
-        renderer.link = (href, title, text) => `<a href="${href}" target="_blank" rel="noopener noreferrer">${text}</a>`;
-        marked.setOptions({ renderer: renderer, breaks: true });
+    const ui = {
+        he: { title: "המורה החכם", input: "הקלד שאלה...", welcome: "שלום! אני כאן בשבילך. איך אוכל לעזור היום?", speak: "הקרא", stop: "עצור", dir: "rtl", lang: "he-IL" },
+        ar: { title: "المعلم الذكي", input: "اكتب سؤالاً...", welcome: "مرحباً! أنا هنا من أجلك. كيف يمكنني مساعدتك اليوم؟", speak: "استماع", stop: "توقف", dir: "rtl", lang: "ar-SA" },
+        en: { title: "Smart Teacher", input: "Type a question...", welcome: "Hello! I'm here for you. How can I help you today?", speak: "Speak", stop: "Stop", dir: "ltr", lang: "en-US" }
+    };
 
-        const ui = {
-            he: { title: "המורה החכם", input: "הקלד שאלה...", welcome: "שלום! אני כאן בשבילך. איך אוכל לעזור היום?", speak: "הקרא", stop: "עצור", dir: "rtl", lang: "he-IL" },
-            ar: { title: "المعلم الذكي", input: "اكتب سؤالاً...", welcome: "مرحباً! أنا هنا من أجلك. איך אוכל לעזור לך היום?", speak: "استماع", stop: "توقف", dir: "rtl", lang: "ar-SA" },
-            en: { title: "Smart Teacher", input: "Type a question...", welcome: "Hello! I'm here for you. How can I help you today?", speak: "Speak", stop: "Stop", dir: "ltr", lang: "en-US" }
-        };
+    let currentLang = 'he';
+    let conversationHistory = [];
+    const win = document.getElementById('chat-window');
 
-        let currentLang = 'he';
-        let chatHistory = [];
-        const win = document.getElementById('chat-window');
+    function setLanguage(lang) {
+        currentLang = lang;
+        const t = ui[lang];
+        document.getElementById('txt-title').innerText = t.title;
+        document.getElementById('user-input').placeholder = t.input;
+        document.getElementById('txt-welcome').innerText = t.welcome;
+        document.getElementById('app-body').className = t.dir;
+        document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.id === 'l-'+lang));
+    }
 
-        function setLanguage(lang) {
-            currentLang = lang;
-            const t = ui[lang];
-            document.getElementById('txt-title').innerText = t.title;
-            document.getElementById('user-input').placeholder = t.input;
-            document.getElementById('txt-welcome').innerText = t.welcome;
-            document.getElementById('app-body').className = t.dir;
-            document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.id === 'l-'+lang));
-        }
+    async function send() {
+        const input = document.getElementById('user-input');
+        const fileIn = document.getElementById('file-in');
+        const text = input.value.trim();
+        const file = fileIn.files[0];
+        if (!text && !file) return;
 
-        function showPreview(input) {
-            if (input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = e => { 
-                    document.getElementById('preview-img-src').src = e.target.result;
-                    document.getElementById('preview-box').style.display = 'block';
-                };
-                reader.readAsDataURL(input.files[0]);
-            }
-        }
+        // הוספת הודעת משתמש
+        addUserMessage(text, file);
+        input.value = ''; 
+        document.getElementById('preview-box').style.display = 'none';
 
-        function cancelImage() {
-            document.getElementById('file-in').value = '';
-            document.getElementById('preview-box').style.display = 'none';
-        }
+        // הוספת בועות חשיבה
+        const typingId = "typing_" + Date.now();
+        const typingDiv = document.createElement('div');
+        typingDiv.id = typingId;
+        typingDiv.className = 'typing-indicator';
+        typingDiv.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
+        win.appendChild(typingDiv);
+        win.scrollTop = win.scrollHeight;
 
-        async function send() {
-            const input = document.getElementById('user-input');
-            const fileIn = document.getElementById('file-in');
-            const text = input.value.trim();
-            const file = fileIn.files[0];
-            if (!text && !file) return;
+        const formData = new FormData();
+        formData.append('message', text);
+        if (file) formData.append('image', file);
+        formData.append('history', JSON.stringify(conversationHistory));
 
-            const userDiv = document.createElement('div');
-            userDiv.className = 'message user';
-            if (file) {
-                const img = document.createElement('img');
-                img.src = document.getElementById('preview-img-src').src;
-                userDiv.appendChild(img);
-            }
-            const txtDiv = document.createElement('div');
-            txtDiv.innerText = text;
-            userDiv.appendChild(txtDiv);
-            win.appendChild(userDiv);
+        try {
+            const res = await fetch('/chat', { method: 'POST', body: formData });
+            const data = await res.json();
             
-            input.value = ''; cancelImage();
-            win.scrollTop = win.scrollHeight;
+            document.getElementById(typingId).remove(); // הסרת בועות חשיבה
 
-            const formData = new FormData();
-            formData.append('message', text);
-            if (file) formData.append('image', file);
-            formData.append('history', JSON.stringify(chatHistory));
-
-            try {
-                const res = await fetch('/chat', { method: 'POST', body: formData });
-                const data = await res.json();
-                chatHistory.push({role: "user", text: text});
-                chatHistory.push({role: "model", text: data.reply});
-                addBotMessage(data.reply);
-            } catch (e) { addBotMessage("שגיאה בחיבור."); }
+            conversationHistory.push({role: "user", text: text});
+            conversationHistory.push({role: "model", text: data.reply});
+            addBotMessage(data.reply);
+        } catch (e) {
+            if(document.getElementById(typingId)) document.getElementById(typingId).remove();
+            addBotMessage("שגיאה בחיבור לשרת.");
         }
+    }
 
-        function addBotMessage(text) {
-            const div = document.createElement('div');
-            div.className = 'message bot';
-            div.innerHTML = `<div>${marked.parse(text)}</div><button class="icon-only" style="font-size:16px; margin-top:5px;" onclick="handleVoice(this, \`${text.replace(/[`*]/g, "")}\`)"><i class="fas fa-volume-up"></i></button>`;
-            win.appendChild(div);
-            win.scrollTop = win.scrollHeight;
-        }
+    function addBotMessage(text) {
+        const div = document.createElement('div');
+        div.className = 'message bot';
+        // שימוש ב-marked בסיסי לקישורים
+        div.innerHTML = `<div>${marked.parse(text)}</div><button class="icon-only" style="font-size:16px; margin-top:5px;" onclick="handleVoice(this, \`${text.replace(/[`*]/g, "")}\`)"><i class="fas fa-volume-up"></i></button>`;
+        win.appendChild(div);
+        win.scrollTop = win.scrollHeight;
+        
+        // תיקון אוטומטי לכל הקישורים שייפתחו בחלון חדש
+        div.querySelectorAll('a').forEach(a => a.target = "_blank");
+    }
 
-        function handleVoice(btn, text) {
-            if (window.speechSynthesis.speaking) {
-                window.speechSynthesis.cancel();
-                btn.style.color = '#54656f';
-                return;
-            }
-            const msg = new SpeechSynthesisUtterance(text);
-            msg.lang = (/[א-ת]/.test(text)) ? 'he-IL' : (/[أ-ي]/.test(text) ? 'ar-SA' : 'en-US');
-            msg.onstart = () => btn.style.color = 'red';
-            msg.onend = () => btn.style.color = '#54656f';
-            window.speechSynthesis.speak(msg);
+    function addUserMessage(text, file) {
+        const div = document.createElement('div');
+        div.className = 'message user';
+        if (file) {
+            const img = document.createElement('img');
+            img.src = document.getElementById('preview-img-src').src;
+            img.style.maxWidth = "100%"; img.style.borderRadius = "10px";
+            div.appendChild(img);
         }
+        const t = document.createElement('div'); t.innerText = text; div.appendChild(t);
+        win.appendChild(div);
+        win.scrollTop = win.scrollHeight;
+    }
 
-        // מיקרופון (STT) - תיקון לנייד
-        const micBtn = document.getElementById('mic-btn');
-        const SpeechRec = window.webkitSpeechRecognition || window.SpeechRecognition;
-        if (SpeechRec) {
-            const r = new SpeechRec();
-            r.lang = 'he-IL';
-            micBtn.onclick = () => { 
-                r.lang = ui[currentLang].lang;
-                r.start(); 
-                micBtn.style.color = 'red'; 
-            };
-            r.onresult = e => { document.getElementById('user-input').value = e.results[0][0].transcript; };
-            r.onend = () => { micBtn.style.color = '#54656f'; };
-        }
-    </script>
+    function handleVoice(btn, text) {
+        window.speechSynthesis.cancel();
+        const msg = new SpeechSynthesisUtterance(text);
+        msg.lang = (/[א-ת]/.test(text)) ? 'he-IL' : (/[أ-ي]/.test(text) ? 'ar-SA' : 'en-US');
+        window.speechSynthesis.speak(msg);
+    }
+
+    // מיקרופון
+    const micBtn = document.getElementById('mic-btn');
+    const SpeechRec = window.webkitSpeechRecognition || window.SpeechRecognition;
+    if (SpeechRec) {
+        const r = new SpeechRec();
+        micBtn.onclick = () => { r.lang = ui[currentLang].lang; r.start(); micBtn.style.color = 'red'; };
+        r.onresult = e => document.getElementById('user-input').value = e.results[0][0].transcript;
+        r.onend = () => micBtn.style.color = '#54656f';
+    }
+</script>
 </body>
 </html>
