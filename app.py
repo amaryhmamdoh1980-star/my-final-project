@@ -47,16 +47,16 @@ def chat():
     
     prompt_text = f"""
     אתה 'המורה החכם' - מומחה לגיאוגרפיה והיסטוריה.
-    חוקים קשיחים:
-    1. ענה תמיד בשפה שבה פנו אליך.
-    2. אם ביקשו תמונה, צור אותה בפורמט Markdown כך: ![תיאור](https://image.pollinations.ai/prompt/{{description}}?width=500&height=300&nologo=true).
-       החלף את {{description}} בתיאור קצר של התמונה באנגלית (למשל: Pine_tree או Limestone_rock).
-    3. התמונות יופיעו בתוך הצ'אט. אל תשלח קישורים חיצוניים לתמונות.
+    חוקים קשיחים לתמונות:
+    1. אם ביקשו תמונה, עליך לתרגם את שם העצם לאנגלית ולהשתמש בפורמט הזה בלבד:
+       ![שם בעברית](https://image.pollinations.ai/prompt/English_Name_Here?width=600&height=400&nologo=true)
+    2. לדוגמה, אם ביקשו חוואר, הקישור יהיה: ![חוואר](https://image.pollinations.ai/prompt/Marl_stone?width=600&height=400&nologo=true)
+    3. ענה תמיד בשפה שבה פנו אליך.
     4. אם המשתמש שלח תמונה, נתח אותה מקצועית.
-    
+
     השאלה: {user_input}
     """
-
+    
     contents = []
     for msg in history:
         contents.append({"role": "user" if msg['role'] == "user" else "model", "parts": [{"text": msg['text']}]})
