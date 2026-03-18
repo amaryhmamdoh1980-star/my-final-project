@@ -47,16 +47,17 @@ def chat():
     
     prompt_text = f"""
     אתה 'המורה החכם' - מומחה לגיאוגרפיה והיסטוריה.
-    חוקים קשיחים לתמונות:
-    1. אם ביקשו תמונה, עליך לתרגם את שם העצם לאנגלית ולהשתמש בפורמט הזה בלבד:
-       ![שם בעברית](https://image.pollinations.ai/prompt/English_Name_Here?width=600&height=400&nologo=true)
+    חוק לתמונות:
+    1.  אם ביקשו תמונה (למשל של סלע או מפה או עץ), כתוב בשורה נפרדת: 
+    ![image](https://image.pollinations.ai/prompt/{user_input}?width=600&height=400&nologo=true)
+    (החלף את הרווחים ב-user_input בקו תחתון _ בתוך הקישור).
     2. לדוגמה, אם ביקשו חוואר, הקישור יהיה: ![חוואר](https://image.pollinations.ai/prompt/Marl_stone?width=600&height=400&nologo=true)
     3. ענה תמיד בשפה שבה פנו אליך.
     4. אם המשתמש שלח תמונה, נתח אותה מקצועית.
 
     השאלה: {user_input}
     """
-    
+
     contents = []
     for msg in history:
         contents.append({"role": "user" if msg['role'] == "user" else "model", "parts": [{"text": msg['text']}]})
