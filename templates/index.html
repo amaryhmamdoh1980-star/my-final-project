@@ -96,9 +96,33 @@
 
     <script>
         const ui = {
-            he: { title: "המורה החכם", input: "הקלד שאלה...", speak: "הקרא", stop: "עצור", dir: "rtl", lang: "he-IL" },
-            ar: { title: "المعلم الذكي", input: "اكتب سؤالاً...", speak: "استماع", stop: "توقف", dir: "rtl", lang: "ar-SA" },
-            en: { title: "Smart Teacher", input: "Type a question...", speak: "Speak", stop: "Stop", dir: "ltr", lang: "en-US" }
+            he: { 
+                title: "המורה החכם", 
+                input: "הקלד שאלה...", 
+                welcome: "שלום! אני כאן בשבילך. איך אוכל לעזור לך היום?", 
+                speak: "הקרא", 
+                stop: "עצור", 
+                dir: "rtl", 
+                lang: "he-IL" 
+            },
+            ar: { 
+                title: "المعلم الذكي", 
+                input: "اكتب سؤالاً...", 
+                welcome: "مرحباً! أنا هنا من أجلك. كيف يمكنني مساعدتك اليوم؟", 
+                speak: "استماع", 
+                stop: "توقف", 
+                dir: "rtl", 
+                lang: "ar-SA" 
+            },
+            en: { 
+                title: "Smart Teacher", 
+                input: "Type a question...", 
+                welcome: "Hello! I'm here for you. How can I help you today?", 
+                speak: "Speak", 
+                stop: "Stop", 
+                dir: "ltr", 
+                lang: "en-US" 
+            }
         };
 
         let currentLang = 'he';
@@ -106,9 +130,14 @@
 
         function setLanguage(lang) {
             currentLang = lang;
-            document.getElementById('txt-title').innerText = ui[lang].title;
-            document.getElementById('user-input').placeholder = ui[lang].input;
-            document.getElementById('app-body').className = ui[lang].dir;
+            const t = ui[lang];
+            document.getElementById('txt-title').innerText = t.title;
+            document.getElementById('user-input').placeholder = t.input;
+            
+            // השורה הזו מעדכנת את הודעת הפתיחה על המסך
+            document.getElementById('txt-welcome').innerText = t.welcome; 
+            
+            document.getElementById('app-body').className = t.dir;
             document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.id === 'l-'+lang));
         }
 
