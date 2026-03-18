@@ -19,7 +19,15 @@
         .lang-btn.active { opacity: 1; font-weight: bold; border-bottom: 2px solid white; }
         #chat-window { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); }
         .message { max-width: 85%; padding: 12px; border-radius: 15px; font-size: 16px; line-height: 1.4; box-shadow: 0 1px 2px rgba(0,0,0,0.1); word-wrap: break-word; }
-        .message img { max-width: 100%; border-radius: 10px; margin-top: 10px; display: block; background: #f9f9f9; min-height: 100px; }
+        .message img { 
+            max-width: 100%; 
+            border-radius: 12px; 
+            margin-top: 10px; 
+            display: block; 
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            border: 1px solid #ddd;
+            background: #f0f0f0;
+        }
         .user { align-self: flex-start; background: var(--user); border-top-left-radius: 2px; }
         .bot { align-self: flex-end; background: var(--bot); border-top-right-radius: 2px; }
         

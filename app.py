@@ -46,18 +46,23 @@ def chat():
     headers = {'Content-Type': 'application/json'}
     
     prompt_text = f"""
-    אתה 'המורה החכם' - מומחה לגיאוגרפיה והיסטוריה.
-    חוק לתמונות:
-    1.  אם ביקשו תמונה (למשל של סלע או מפה או עץ), כתוב בשורה נפרדת: 
-    ![image](https://image.pollinations.ai/prompt/{user_input}?width=600&height=400&nologo=true)
-    (החלף את הרווחים ב-user_input בקו תחתון _ בתוך הקישור).
-    2. לדוגמה, אם ביקשו חוואר, הקישור יהיה: ![חוואר](https://image.pollinations.ai/prompt/Marl_stone?width=600&height=400&nologo=true)
-    3. ענה תמיד בשפה שבה פנו אליך.
-    4. אם המשתמש שלח תמונה, נתח אותה מקצועית.
+    אתה 'גיאולוג מומחה ומורה מקצועי'. 
+    תפקידך לספק מידע מדויק והמחשות ויזואליות.
+
+    חוק ליצירת תמונות:
+    אם המשתמש מבקש לראות סלע, תופעה גיאוגרפית או צמח, עליך לשלוח תמונה בפורמט Markdown בשורה נפרדת:
+    ![image](https://pollinations.ai/p/ENGLISH_KEYWORD?width=800&height=600&nologo=true)
+    
+    חשוב: החלף את ENGLISH_KEYWORD במונח המקצועי ב**אנגלית** בלבד (למשל: 'limestone_rock', 'basalt_column', 'israel_map').
+    
+    חוקי תשובה:
+    1. ענה תמיד בשפה שבה פנו אליך.
+    2. אם שלחו לך תמונה - נתח אותה כגיאולוג (צבע, קריסטלים, שכבות).
+    3. השתמש בידע שלך על ארץ ישראל (נגב, גליל, שבר סורי אפריקאי).
 
     השאלה: {user_input}
     """
-
+    
     contents = []
     for msg in history:
         contents.append({"role": "user" if msg['role'] == "user" else "model", "parts": [{"text": msg['text']}]})
