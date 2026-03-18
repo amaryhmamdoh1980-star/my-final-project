@@ -151,7 +151,11 @@
             win.appendChild(userDiv);
             win.scrollTop = win.scrollHeight;
 
-            // 2. יצירת בועות החשיבה (המתנה)
+            // 2. איפוס שדות מיד כדי שהמשתמש יראה שהשליחה התחילה
+            input.value = ''; 
+            cancelImage();
+
+            // 3. יצירת בועות החשיבה
             const typingId = "typing_" + Date.now();
             const typingDiv = document.createElement('div');
             typingDiv.id = typingId;
@@ -160,32 +164,34 @@
             win.appendChild(typingDiv);
             win.scrollTop = win.scrollHeight;
 
-            // 3. הכנת נתונים לשליחה
             const formData = new FormData();
             formData.append('message', text);
             if (file) formData.append('image', file);
-            formData.append('history', JSON.stringify(chatHistory));
-
-            input.value = ''; cancelImage();
+            // תיקון השם כאן: conversationHistory במקום chatHistory
+            formData.append('history', JSON.stringify(conversationHistory));
 
             try {
                 const res = await fetch('/chat', { method: 'POST', body: formData });
                 const data = await res.json();
                 
-                // 4. הסרת בועות החשיבה לפני הוספת התשובה
+                // 4. הסרת בועות החשיבה
                 const indicator = document.getElementById(typingId);
                 if (indicator) indicator.remove();
 
-                chatHistory.push({role: "user", text: text});
-                chatHistory.push({role: "model", text: data.reply});
-                if(chatHistory.length > 10) chatHistory.shift();
+                if (data.reply) {
+                    // שמירה לזיכרון
+                    conversationHistory.push({role: "user", text: text});
+                    conversationHistory.push({role: "model", text: data.reply});
+                    if(conversationHistory.length > 10) conversationHistory.shift();
 
-                addBotMessage(data.reply);
+                    addBotMessage(data.reply);
+                } else {
+                    addBotMessage("המורה לא הצליח לענות, נסה שוב.");
+                }
             } catch (e) { 
-                // הסרת הבועות גם במקרה של שגיאה
                 const indicator = document.getElementById(typingId);
                 if (indicator) indicator.remove();
-                addBotMessage("מצטער, חלה שגיאה בתקשורת עם השרת."); 
+                addBotMessage("שגיאת תקשורת. וודא שהשרת ב-Render פועל."); 
             }
         }
 
