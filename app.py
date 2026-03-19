@@ -47,22 +47,22 @@ def chat():
         history = []
 
     if not user_input and not image_file:
-        return jsonify({"reply": "לא נשלחה הודעה"}), 400
+        return jsonify({"reply": "Empty message"}), 400
 
+    # שימוש ב-2.5 פלאש עם ה-Billing שלך
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
     headers = {'Content-Type': 'application/json'}
     
+    # הנחיה מקצועית סופית
     prompt_text = f"""
-    אתה 'המורה החכם' - גיאולוג ומומחה להיסטוריה. 
-    ענה תמיד בשפה שבה פנו אליך.
+    אתה 'המורה החכם' - מומחה לגיאולוגיה והיסטוריה. ענה תמיד בשפה שבה פנו אליך.
     
-    חוק תמונות מקצועי:
+    חוק תמונות:
     אם המשתמש מבקש לראות סלע, אבן או נוף - סיים את התשובה שלך תמיד בשורה חדשה בפורמט הזה:
-    [IMAGE: ENGLISH_KEYWORD]
-    למשל: [IMAGE: limestone_rock] או [IMAGE: basalt_stone].
-    אל תכתוב עברית בתוך הסוגריים המרובעים.
+    [IMAGE: ENGLISH_WORD]
+    למשל: [IMAGE: limestone] או [IMAGE: basalt]. השתמש במילה אחת באנגלית בלבד.
     
-    השאלה הנוכחית: {user_input}
+    השאלה: {user_input}
     """
 
     contents = []
@@ -74,10 +74,9 @@ def chat():
     
     if image_file:
         try:
-            image_data = base64.b64encode(image_file.read()).decode('utf-8')
-            current_parts.append({"inline_data": {"mime_type": image_file.content_type, "data": image_data}})
-        except Exception as e:
-            print(f"Error: {e}")
+            img_data = base64.b64encode(image_file.read()).decode('utf-8')
+            current_parts.append({"inline_data": {"mime_type": image_file.content_type, "data": img_data}})
+        except: pass
     
     contents.append({"role": "user", "parts": current_parts})
     payload = {"contents": contents}
@@ -91,10 +90,9 @@ def chat():
                 db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input or "תמונה", reply)
             except: pass
             return jsonify({"reply": reply})
-        else:
-            return jsonify({"reply": "שגיאה מהמורה."}), response.status_code
+        return jsonify({"reply": "שגיאת שרת גוגל."}), response.status_code
     except Exception as e:
-        return jsonify({"reply": f"תקלה בחיבור: {str(e)}"}), 500
+        return jsonify({"reply": f"תקלה: {str(e)}"}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
