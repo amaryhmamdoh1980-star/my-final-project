@@ -8,7 +8,7 @@ from sqlalchemy import text
 
 app = Flask(__name__)
 
-# --- Database Setup (הגדרות מסד הנתונים שלך) ---
+# --- Database Setup ---
 DB_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres.yimsexytrswzamnslgcd:MaAm%40036355972@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres')
 app.config['SQLALCHEMY_DATABASE_URI'] = DB_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -52,40 +52,32 @@ def chat():
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
     headers = {'Content-Type': 'application/json'}
     
-    # הנחיה מקצועית סופית - משלבת גיאולוגיה, היסטוריה וזיהוי תמונות
     prompt_text = f"""
-    אתה 'המורה החכם' - מומחה לגיאולוגיה והיסטוריה. 
+    אתה 'המורה החכם' - גיאולוג ומומחה להיסטוריה. 
     ענה תמיד בשפה שבה פנו אליך.
     
-    חוק תמונות (קריטי):
-    אם המשתמש מבקש לראות סלע, אבן או נוף, סיים את התשובה תמיד בשורה חדשה בפורמט הזה:
+    חוק תמונות מקצועי:
+    אם המשתמש מבקש לראות סלע, אבן או נוף - סיים את התשובה שלך תמיד בשורה חדשה בפורמט הזה:
     [IMAGE: ENGLISH_KEYWORD]
-    למשל: [IMAGE: limestone] או [IMAGE: basalt].
-    אל תכתוב שום דבר אחר בתוך הסוגריים. השתמש במילה אחת באנגלית בלבד.
-
+    למשל: [IMAGE: limestone_rock] או [IMAGE: basalt_stone].
+    אל תכתוב עברית בתוך הסוגריים המרובעים.
+    
     השאלה הנוכחית: {user_input}
     """
-    
+
     contents = []
-    # הוספת היסטוריית השיחה לזיכרון המורה
     for msg in history:
         role = "user" if msg['role'] == "user" else "model"
         contents.append({"role": role, "parts": [{"text": msg['text']}]})
 
     current_parts = [{"text": prompt_text}]
     
-    # טיפול בתמונה שהמשתמש שלח (אם קיימת)
     if image_file:
         try:
             image_data = base64.b64encode(image_file.read()).decode('utf-8')
-            current_parts.append({
-                "inline_data": {
-                    "mime_type": image_file.content_type,
-                    "data": image_data
-                }
-            })
+            current_parts.append({"inline_data": {"mime_type": image_file.content_type, "data": image_data}})
         except Exception as e:
-            print(f"Error encoding image: {e}")
+            print(f"Error: {e}")
     
     contents.append({"role": "user", "parts": current_parts})
     payload = {"contents": contents}
@@ -93,22 +85,17 @@ def chat():
     try:
         response = requests.post(url, json=payload, headers=headers)
         data = response.json()
-
         if response.status_code == 200:
             reply = data['candidates'][0]['content']['parts'][0]['text']
-            # שמירה למסד הנתונים
             try:
                 db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input or "תמונה", reply)
-            except:
-                pass
+            except: pass
             return jsonify({"reply": reply})
         else:
-            error_msg = data.get('error', {}).get('message', 'Unknown Error')
-            return jsonify({"reply": f"שגיאה מגוגל: {error_msg}"}), response.status_code
+            return jsonify({"reply": "שגיאה מהמורה."}), response.status_code
     except Exception as e:
         return jsonify({"reply": f"תקלה בחיבור: {str(e)}"}), 500
 
 if __name__ == "__main__":
-    # הגדרת פורט ל-Render
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
