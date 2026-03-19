@@ -70,10 +70,10 @@
     </div>
 
     <script>
-        const uiConfig = {
-            he: { title: "המורה החכם", input: "הקלד שאלה...", welcome: "שלום! אני כאן בשבילך. איך אוכל לעזור לך היום?", dir: "rtl", langCode: "he-IL" },
-            ar: { title: "المعلم الذكي", input: "اكتب سؤالاً...", welcome: "مرحباً! أنا هنا من أجلك. كيف يمكنني مساعدتك اليوم؟", dir: "rtl", langCode: "ar-SA" },
-            en: { title: "Smart Teacher", input: "Type a question...", welcome: "Hello! I'm here for you. How can I help you today?", dir: "ltr", langCode: "en-US" }
+        const translations = {
+            he: { title: "המורה החכם", input: "הקלד שאלה...", welcome: "שלום! אני כאן בשבילך. איך אוכל לעזור לך היום?", lang: "he-IL" },
+            ar: { title: "المعلم الذكي", input: "اكتب سؤالاً...", welcome: "مرحباً! أنا هنا من أجلك. كيف يمكنني مساعدتك اليوم؟", lang: "ar-SA" },
+            en: { title: "Smart Teacher", input: "Type a question...", welcome: "Hello! I'm here for you. How can I help you today?", lang: "en-US" }
         };
 
         let currentLang = 'he';
@@ -83,11 +83,11 @@
 
         function setLanguage(lang) {
             currentLang = lang;
-            const t = uiConfig[lang];
+            const t = translations[lang];
             document.getElementById('txt-title').innerText = t.title;
             document.getElementById('user-input').placeholder = t.input;
             document.getElementById('txt-welcome').innerText = t.welcome;
-            document.getElementById('app-body').className = t.dir;
+            document.getElementById('app-body').className = (lang === 'en' ? 'ltr' : 'rtl');
             document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.id === 'l-'+lang));
         }
 
@@ -109,7 +109,6 @@
             const file = fileIn.files[0];
             if (!text && !file) return;
 
-            // 1. הוספת הודעת משתמש וניקוי שדה הקלט מיד
             const userDiv = document.createElement('div');
             userDiv.className = 'message user';
             if (file) {
@@ -121,15 +120,15 @@
             const t = document.createElement('div'); t.innerText = text; userDiv.appendChild(t);
             win.insertBefore(userDiv, typing);
             
-            input.value = ''; // ניקוי השדה
-            document.getElementById('preview-box').style.display='none';
-            typing.style.display = 'flex'; // הצגת בועות חשיבה
+            input.value = ''; document.getElementById('preview-box').style.display='none';
+            typing.style.display = 'flex';
             win.scrollTop = win.scrollHeight;
 
             const formData = new FormData();
             formData.append('message', text);
             if (file) formData.append('image', file);
             formData.append('history', JSON.stringify(chatHistory));
+            fileIn.value = '';
 
             try {
                 const res = await fetch('/chat', { method: 'POST', body: formData });
@@ -148,26 +147,15 @@
         function addBotMessage(text) {
             const div = document.createElement('div');
             div.className = 'message bot';
-            
             let cleanText = text;
             let imageHTML = "";
             const match = text.match(/\[IMAGE:\s*(.*?)\]/i);
-            
             if (match) {
                 const keyword = match[1].trim();
-                imageHTML = `<div class="img-card"><img src="https://pollinations.ai/p/${keyword}_geology_high_res?width=600&height=400&nologo=true" onerror="this.src='https://loremflickr.com/600/400/${keyword},rock/all'"></div>`;
+                imageHTML = `<div class="img-card"><img src="https://pollinations.ai/p/${keyword}_geology_sample?width=600&height=400&nologo=true" onerror="this.src='https://loremflickr.com/600/400/${keyword},rock/all'"></div>`;
                 cleanText = text.replace(match[0], "");
             }
-
-            const txtContainer = document.createElement('div');
-            txtContainer.innerHTML = marked.parse(cleanText);
-            div.appendChild(txtContainer);
-            if (imageHTML) {
-                const imgCont = document.createElement('div');
-                imgCont.innerHTML = imageHTML;
-                div.appendChild(imgCont);
-            }
-
+            div.innerHTML = `<div>${marked.parse(cleanText)}</div>${imageHTML}`;
             const btn = document.createElement('button');
             btn.className = 'icon-only'; btn.innerHTML = '<i class="fas fa-volume-up"></i>';
             btn.style.marginTop = "10px";
@@ -178,7 +166,6 @@
                 window.speechSynthesis.speak(speakMsg);
             };
             div.appendChild(btn);
-
             win.insertBefore(div, typing);
             win.scrollTop = win.scrollHeight;
         }
@@ -187,7 +174,7 @@
         const SpeechRec = window.webkitSpeechRecognition || window.SpeechRecognition;
         if (SpeechRec) {
             const r = new SpeechRec();
-            micBtn.onclick = () => { r.lang = uiConfig[currentLang].langCode; r.start(); micBtn.style.color = 'red'; };
+            micBtn.onclick = () => { r.lang = translations[currentLang].lang; r.start(); micBtn.style.color = 'red'; };
             r.onresult = e => document.getElementById('user-input').value = e.results[0][0].transcript;
             r.onend = () => micBtn.style.color = '#54656f';
         }
