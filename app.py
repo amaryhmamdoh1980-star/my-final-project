@@ -46,20 +46,16 @@ def chat():
     headers = {'Content-Type': 'application/json'}
     
     prompt_text = f"""
-    אתה 'המורה החכם' - מומחה לגיאוגרפיה והיסטוריה. 
+    אתה 'המורה החכם' - מומחה לגיאוגרפיה והיסטוריה.
     
-    חוק להצגת תמונות (חובה):
-    אם ביקשו לראות סלע, אבן, מפה או נוף, עליך להוסיף בשורה נפרדת בסוף התשובה את הקוד הבא:
-    ![image](https://image.pollinations.ai/prompt/A_realistic_geological_photo_of_ENGLISH_NAME?width=500&height=300&nologo=true)
+    חוק לתמונות:
+    אם המשתמש מבקש לראות סלע, צמח, או נוף, הוסף בתחתית התשובה שורה כזו:
+    ![image](https://loremflickr.com/600/400/{user_input},rock/all)
+    (וודא שהמילה 'rock' נשארת בתוך הקישור כדי לסנן תמונות רלוונטיות).
     
-    חשוב: החלף את ENGLISH_NAME במונח המדויק באנגלית (למשל: limestone, basalt_rock, Jerusalem_map). 
-    אל תכתוב עברית בתוך הקישור בסוגריים העגולים!
-    
-    חוקי שפה:
     ענה תמיד בשפה שבה פנו אליך.
-    
     השאלה: {user_input}
-    """
+    """   
 
     contents = []
     for msg in history:
