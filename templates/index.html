@@ -24,11 +24,9 @@
         .rtl .bot { align-self: flex-end; background: var(--bot); border-top-right-radius: 2px; }
         .ltr .user { align-self: flex-end; background: var(--user); border-top-right-radius: 2px; }
         .ltr .bot { align-self: flex-start; background: var(--bot); border-top-left-radius: 2px; }
-        
         .typing { display: none; gap: 4px; padding: 12px; background: var(--bot); border-radius: 15px; width: fit-content; align-self: flex-end; margin-bottom: 10px; }
         .dot { width: 8px; height: 8px; background: #888; border-radius: 50%; animation: bounce 1.3s infinite; }
         @keyframes bounce { 0%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-7px); } }
-
         #input-area { background: #f0f0f0; padding: 10px; border-top: 1px solid #ccc; flex-shrink: 0; padding-bottom: env(safe-area-inset-bottom); }
         .input-row { display: flex; gap: 8px; align-items: center; }
         #user-input { flex: 1; padding: 12px; border-radius: 25px; border: 1px solid white; outline: none; font-size: 16px; }
@@ -52,12 +50,10 @@
             <img src="/static/uploads/images (2).jfif" class="profile-img">
         </a>
     </div>
-
     <div id="chat-window">
         <div class="message bot" id="txt-welcome">שלום! אני כאן בשבילך. איך אוכל לעזור לך היום?</div>
         <div id="typing-bubble" class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
     </div>
-
     <div id="input-area">
         <div id="preview-box" style="display:none; text-align:center; padding:5px;">
             <img id="preview-img-src" style="max-height:70px; border-radius:5px;">
@@ -73,6 +69,12 @@
     </div>
 
     <script>
+        const ui = {
+            he: { title: "המורה החכם", input: "הקלד שאלה...", welcome: "שלום! אני כאן בשבילך. איך אוכל לעזור היום?", lang: "he-IL" },
+            ar: { title: "المعلم الذكي", input: "اكتب سؤالاً...", welcome: "مرحباً! أنا هنا من أجلك. كيف يمكنني مساعدتك اليوم؟", lang: "ar-SA" },
+            en: { title: "Smart Teacher", input: "Type a question...", welcome: "Hello! I'm here for you. How can I help you today?", lang: "en-US" }
+        };
+
         let currentLang = 'he';
         let chatHistory = [];
         const win = document.getElementById('chat-window');
@@ -80,25 +82,29 @@
 
         function setLanguage(lang) {
             currentLang = lang;
-            const ui = { he: { title: "המורה החכם", input: "הקלד שאלה...", dir: "rtl" }, ar: { title: "المعلم الذكي", input: "اكتب سؤالاً...", dir: "rtl" }, en: { title: "Smart Teacher", input: "Type a question...", dir: "ltr" } };
-            document.getElementById('txt-title').innerText = ui[lang].title;
-            document.getElementById('user-input').placeholder = ui[lang].input;
-            document.getElementById('app-body').className = ui[lang].dir;
+            const t = ui[lang];
+            document.getElementById('txt-title').innerText = t.title;
+            document.getElementById('user-input').placeholder = t.input;
+            document.getElementById('txt-welcome').innerText = t.welcome;
+            document.getElementById('app-body').className = (lang === 'en' ? 'ltr' : 'rtl');
             document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.id === 'l-'+lang));
         }
 
         function showPreview(input) {
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
-                reader.onload = e => { document.getElementById('preview-img-src').src = e.target.result; document.getElementById('preview-box').style.display = 'block'; };
+                reader.onload = e => { 
+                    document.getElementById('preview-img-src').src = e.target.result;
+                    document.getElementById('preview-box').style.display = 'block';
+                };
                 reader.readAsDataURL(input.files[0]);
             }
         }
 
         async function send() {
             const input = document.getElementById('user-input');
-            const fileIn = document.getElementById('file-in');
             const text = input.value.trim();
+            const fileIn = document.getElementById('file-in');
             const file = fileIn.files[0];
             if (!text && !file) return;
 
@@ -107,11 +113,11 @@
             if (file) {
                 const img = document.createElement('img');
                 img.src = document.getElementById('preview-img-src').src;
+                img.style.maxWidth="100%"; img.style.borderRadius="10px";
                 userDiv.appendChild(img);
             }
             const t = document.createElement('div'); t.innerText = text; userDiv.appendChild(t);
             win.insertBefore(userDiv, typing);
-            
             input.value = ''; document.getElementById('preview-box').style.display='none';
             typing.style.display = 'flex';
             win.scrollTop = win.scrollHeight;
@@ -128,38 +134,66 @@
                 chatHistory.push({role: "user", text: text});
                 chatHistory.push({role: "model", text: data.reply});
                 addBotMessage(data.reply);
-            } catch (e) {
-                typing.style.display = 'none';
-                addBotMessage("שגיאה בחיבור.");
-            }
+            } catch (e) { typing.style.display = 'none'; addBotMessage("Error."); }
         }
 
         function addBotMessage(text) {
             const div = document.createElement('div');
             div.className = 'message bot';
-            const content = document.createElement('div');
-            content.innerHTML = marked.parse(text);
-            div.appendChild(content);
+            
+            let cleanText = text;
+            let imageHTML = "";
+            const match = text.match(/\[IMAGE:\s*(.*?)\]/i);
+            if (match) {
+                const keyword = match[1].trim();
+                // שימוש במנוע ה-FLUX החדש והמקצועי ביותר
+                imageHTML = `<img src="https://image.pollinations.ai/prompt/professional_geological_photo_of_${keyword}_natural_lighting?width=600&height=400&nologo=true&model=flux" style="width:100%; border-radius:10px; margin-top:10px;">`;
+                cleanText = text.replace(match[0], "");
+            }
+
+            const txtDiv = document.createElement('div');
+            txtDiv.innerHTML = marked.parse(cleanText);
+            div.appendChild(txtDiv);
+            if (imageHTML) {
+                const imgCont = document.createElement('div');
+                imgCont.innerHTML = imageHTML;
+                div.appendChild(imgCont);
+            }
 
             const btn = document.createElement('button');
             btn.className = 'icon-only'; btn.innerHTML = '<i class="fas fa-volume-up"></i>';
-            btn.onclick = () => {
-                if (window.speechSynthesis.speaking) { window.speechSynthesis.cancel(); return; }
-                const msg = new SpeechSynthesisUtterance(text.replace(/[*#`_]/g, "").replace(/!\[.*\]\(.*\)/g, ""));
-                msg.lang = (/[א-ת]/.test(text)) ? 'he-IL' : (/[أ-ي]/.test(text) ? 'ar-SA' : 'en-US');
-                window.speechSynthesis.speak(msg);
-            };
+            btn.style.marginTop = "10px";
+            btn.onclick = () => handleVoice(btn, cleanText);
             div.appendChild(btn);
 
             win.insertBefore(div, typing);
             win.scrollTop = win.scrollHeight;
         }
 
+        function handleVoice(btn, text) {
+            if (window.speechSynthesis.speaking) { window.speechSynthesis.cancel(); return; }
+            const clean = text.replace(/[*#`_]/g, "");
+            const msg = new SpeechSynthesisUtterance(clean);
+            
+            // זיהוי שפה
+            const isHebrew = /[א-ת]/.test(clean);
+            const isArabic = /[\u0600-\u06FF]/.test(clean);
+            msg.lang = isHebrew ? 'he-IL' : (isArabic ? 'ar-SA' : 'en-US');
+
+            // תיקון לטלפון: מציאת קול מתאים
+            const voices = window.speechSynthesis.getVoices();
+            const targetVoice = voices.find(v => v.lang.startsWith(msg.lang.split('-')[0]));
+            if (targetVoice) msg.voice = targetVoice;
+
+            msg.rate = 0.9;
+            window.speechSynthesis.speak(msg);
+        }
+
         const micBtn = document.getElementById('mic-btn');
         const SpeechRec = window.webkitSpeechRecognition || window.SpeechRecognition;
         if (SpeechRec) {
             const r = new SpeechRec();
-            micBtn.onclick = () => { r.lang = (currentLang === 'he' ? 'he-IL' : currentLang === 'ar' ? 'ar-SA' : 'en-US'); r.start(); micBtn.style.color = 'red'; };
+            micBtn.onclick = () => { r.lang = ui[currentLang].lang; r.start(); micBtn.style.color = 'red'; };
             r.onresult = e => document.getElementById('user-input').value = e.results[0][0].transcript;
             r.onend = () => micBtn.style.color = '#54656f';
         }

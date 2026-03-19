@@ -47,21 +47,21 @@ def chat():
         history = []
 
     if not user_input and not image_file:
-        return jsonify({"reply": "לא נשלחה הודעה"}), 400
+        return jsonify({"reply": "Empty message"}), 400
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
     headers = {'Content-Type': 'application/json'}
     
+    # הנחיה מקצועית - המורה מתרגם לאנגלית כדי למנוע תמונות שבורות או חתולים
     prompt_text = f"""
-    אתה 'המורה החכם' - מומחה לגיאוגרפיה והיסטוריה.
+    אתה 'המורה החכם' - גיאולוג מומחה ומורה מקצועי. ענה תמיד בשפה שבה פנו אליך.
     
-    חוק לתמונות:
-    אם המשתמש מבקש לראות סלע, צמח, או נוף, הוסף בתחתית התשובה שורה כזו:
-    ![image](https://loremflickr.com/600/400/{user_input},rock/all)
-    (וודא שהמילה 'rock' נשארת בתוך הקישור כדי לסנן תמונות רלוונטיות).
+    חוק תמונות (קריטי):
+    אם המשתמש מבקש לראות סלע, אבן או נוף - סיים את התשובה תמיד בשורה חדשה בפורמט הזה:
+    [IMAGE: ENGLISH_KEYWORD]
+    השתמש במילה אחת באנגלית בלבד שמתארת את הסלע (למשל: limestone, basalt, granite).
     
-    ענה תמיד בשפה שבה פנו אליך.
-    השאלה: {user_input}
+    השאלה הנוכחית: {user_input}
     """
 
     contents = []
@@ -89,9 +89,9 @@ def chat():
                 db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input or "תמונה", reply)
             except: pass
             return jsonify({"reply": reply})
-        return jsonify({"reply": "שגיאה מהמורה."}), response.status_code
+        return jsonify({"reply": "שגיאת שרת גוגל."}), response.status_code
     except Exception as e:
-        return jsonify({"reply": f"תקלה בחיבור: {str(e)}"}), 500
+        return jsonify({"reply": f"תקלה: {str(e)}"}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
