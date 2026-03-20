@@ -69,10 +69,19 @@
     </div>
 
     <script>
+        <script>
         let currentLang = 'he';
         let chatHistory = [];
         const win = document.getElementById('chat-window');
         const typing = document.getElementById('typing-bubble');
+
+        // טעינת קולות מראש - קריטי לטלפונים
+        let voices = [];
+        function loadVoices() {
+            voices = window.speechSynthesis.getVoices();
+        }
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+        loadVoices();
 
         function setLanguage(lang) {
             currentLang = lang;
@@ -136,7 +145,6 @@
             
             if (match) {
                 const keyword = match[1].trim();
-                // שימוש במקור תמונות יציב של תמונות אמיתיות
                 imageHTML = `<img src="https://loremflickr.com/600/400/${keyword},geology/all" alt="Geology">`;
                 cleanText = text.replace(match[0], "");
             }
@@ -153,37 +161,47 @@
             const btn = document.createElement('button');
             btn.className = 'icon-only'; btn.innerHTML = '<i class="fas fa-volume-up"></i>';
             btn.style.marginTop = "8px";
-            btn.onclick = () => handleVoice(btn, cleanText);
-            div.appendChild(btn);
+            
+            // פונקציית הקראה משופרת לטלפונים
+            btn.onclick = () => {
+                if (window.speechSynthesis.speaking) {
+                    window.speechSynthesis.cancel();
+                    return;
+                }
+                // ניקוי יסודי של הטקסט לפני הקראה
+                const textToSpeak = cleanText.replace(/[*#`_]/g, "").trim();
+                const msg = new SpeechSynthesisUtterance(textToSpeak);
+                
+                // זיהוי שפה
+                const isHebrew = /[א-ת]/.test(textToSpeak);
+                const isArabic = /[\u0600-\u06FF]/.test(textToSpeak);
+                
+                if (isHebrew) msg.lang = 'he-IL';
+                else if (isArabic) msg.lang = 'ar-SA';
+                else msg.lang = 'en-US';
 
+                // בחירה אגרסיבית של קול תואם
+                if (voices.length === 0) loadVoices();
+                const targetVoice = voices.find(v => v.lang.includes(msg.lang.split('-')[0]));
+                if (targetVoice) msg.voice = targetVoice;
+
+                msg.rate = 0.9;
+                window.speechSynthesis.speak(msg);
+            };
+
+            div.appendChild(btn);
             win.insertBefore(div, typing);
             win.scrollTop = win.scrollHeight;
-        }
-
-        function handleVoice(btn, text) {
-            if (window.speechSynthesis.speaking) { window.speechSynthesis.cancel(); return; }
-            const clean = text.replace(/[*#`_]/g, "");
-            const msg = new SpeechSynthesisUtterance(clean);
-            
-            // זיהוי שפה
-            const isHebrew = /[א-ת]/.test(clean);
-            const isArabic = /[\u0600-\u06FF]/.test(clean);
-            msg.lang = isHebrew ? 'he-IL' : (isArabic ? 'ar-SA' : 'en-US');
-
-            // הכרחת הטלפון למצוא קול מתאים
-            const voices = window.speechSynthesis.getVoices();
-            const targetVoice = voices.find(v => v.lang.startsWith(msg.lang.split('-')[0]));
-            if (targetVoice) msg.voice = targetVoice;
-
-            msg.rate = 0.9;
-            window.speechSynthesis.speak(msg);
         }
 
         const micBtn = document.getElementById('mic-btn');
         const SpeechRec = window.webkitSpeechRecognition || window.SpeechRecognition;
         if (SpeechRec) {
             const r = new SpeechRec();
-            micBtn.onclick = () => { r.lang = (currentLang === 'he' ? 'he-IL' : currentLang === 'ar' ? 'ar-SA' : 'en-US'); r.start(); micBtn.style.color = 'red'; };
+            micBtn.onclick = () => { 
+                r.lang = (currentLang === 'he' ? 'he-IL' : currentLang === 'ar' ? 'ar-SA' : 'en-US'); 
+                r.start(); micBtn.style.color = 'red'; 
+            };
             r.onresult = e => document.getElementById('user-input').value = e.results[0][0].transcript;
             r.onend = () => micBtn.style.color = '#54656f';
         }
