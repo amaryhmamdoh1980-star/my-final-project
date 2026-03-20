@@ -18,8 +18,8 @@
         .lang-btn { background: none; border: none; color: white; cursor: pointer; font-size: 11px; opacity: 0.6; }
         .lang-btn.active { opacity: 1; font-weight: bold; border-bottom: 2px solid white; }
         #chat-window { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); }
-        .message { max-width: 85%; padding: 12px; border-radius: 15px; font-size: 16px; line-height: 1.4; box-shadow: 0 1px 2px rgba(0,0,0,0.1); word-wrap: break-word; }
-        .message img { max-width: 100%; border-radius: 10px; margin-top: 10px; display: block; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .message { max-width: 85%; padding: 12px; border-radius: 15px; font-size: 16px; line-height: 1.4; box-shadow: 0 1px 2px rgba(0,0,0,0.1); word-wrap: break-word; position: relative; }
+        .message img { max-width: 100%; border-radius: 10px; margin-top: 10px; display: block; border: 1px solid #ddd; }
         .rtl .user { align-self: flex-start; background: var(--user); border-top-left-radius: 2px; }
         .rtl .bot { align-self: flex-end; background: var(--bot); border-top-right-radius: 2px; }
         .ltr .user { align-self: flex-end; background: var(--user); border-top-right-radius: 2px; }
@@ -69,12 +69,6 @@
     </div>
 
     <script>
-        const ui = {
-            he: { title: "המורה החכם", input: "הקלד שאלה...", welcome: "שלום! אני כאן בשבילך. איך אוכל לעזור היום?", lang: "he-IL" },
-            ar: { title: "المعلم الذكي", input: "اكتب سؤالاً...", welcome: "مرحباً! أنا هنا من أجلك. كيف يمكنني مساعدتك اليوم؟", lang: "ar-SA" },
-            en: { title: "Smart Teacher", input: "Type a question...", welcome: "Hello! I'm here for you. How can I help you today?", lang: "en-US" }
-        };
-
         let currentLang = 'he';
         let chatHistory = [];
         const win = document.getElementById('chat-window');
@@ -82,10 +76,10 @@
 
         function setLanguage(lang) {
             currentLang = lang;
-            const t = ui[lang];
-            document.getElementById('txt-title').innerText = t.title;
-            document.getElementById('user-input').placeholder = t.input;
-            document.getElementById('txt-welcome').innerText = t.welcome;
+            const labels = { he: "המורה החכם", ar: "المعلم الذكي", en: "Smart Teacher" };
+            const inputs = { he: "הקלד שאלה...", ar: "اكتب سؤالاً...", en: "Type a question..." };
+            document.getElementById('txt-title').innerText = labels[lang];
+            document.getElementById('user-input').placeholder = inputs[lang];
             document.getElementById('app-body').className = (lang === 'en' ? 'ltr' : 'rtl');
             document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.id === 'l-'+lang));
         }
@@ -93,10 +87,7 @@
         function showPreview(input) {
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
-                reader.onload = e => { 
-                    document.getElementById('preview-img-src').src = e.target.result;
-                    document.getElementById('preview-box').style.display = 'block';
-                };
+                reader.onload = e => { document.getElementById('preview-img-src').src = e.target.result; document.getElementById('preview-box').style.display = 'block'; };
                 reader.readAsDataURL(input.files[0]);
             }
         }
@@ -104,8 +95,7 @@
         async function send() {
             const input = document.getElementById('user-input');
             const text = input.value.trim();
-            const fileIn = document.getElementById('file-in');
-            const file = fileIn.files[0];
+            const file = document.getElementById('file-in').files[0];
             if (!text && !file) return;
 
             const userDiv = document.createElement('div');
@@ -113,7 +103,6 @@
             if (file) {
                 const img = document.createElement('img');
                 img.src = document.getElementById('preview-img-src').src;
-                img.style.maxWidth="100%"; img.style.borderRadius="10px";
                 userDiv.appendChild(img);
             }
             const t = document.createElement('div'); t.innerText = text; userDiv.appendChild(t);
@@ -143,26 +132,27 @@
             
             let cleanText = text;
             let imageHTML = "";
-            const match = text.match(/\[IMAGE:\s*(.*?)\]/i);
+            const match = text.match(/\[IMAGE_KEYWORD:\s*(.*?)\]/i);
+            
             if (match) {
                 const keyword = match[1].trim();
-                // שימוש במנוע ה-FLUX החדש והמקצועי ביותר
-                imageHTML = `<img src="https://image.pollinations.ai/prompt/professional_geological_photo_of_${keyword}_natural_lighting?width=600&height=400&nologo=true&model=flux" style="width:100%; border-radius:10px; margin-top:10px;">`;
+                // שימוש במקור תמונות יציב של תמונות אמיתיות
+                imageHTML = `<img src="https://loremflickr.com/600/400/${keyword},geology/all" alt="Geology">`;
                 cleanText = text.replace(match[0], "");
             }
 
-            const txtDiv = document.createElement('div');
-            txtDiv.innerHTML = marked.parse(cleanText);
-            div.appendChild(txtDiv);
+            const contentDiv = document.createElement('div');
+            contentDiv.innerHTML = marked.parse(cleanText);
+            div.appendChild(contentDiv);
             if (imageHTML) {
-                const imgCont = document.createElement('div');
-                imgCont.innerHTML = imageHTML;
-                div.appendChild(imgCont);
+                const container = document.createElement('div');
+                container.innerHTML = imageHTML;
+                div.appendChild(container);
             }
 
             const btn = document.createElement('button');
             btn.className = 'icon-only'; btn.innerHTML = '<i class="fas fa-volume-up"></i>';
-            btn.style.marginTop = "10px";
+            btn.style.marginTop = "8px";
             btn.onclick = () => handleVoice(btn, cleanText);
             div.appendChild(btn);
 
@@ -180,7 +170,7 @@
             const isArabic = /[\u0600-\u06FF]/.test(clean);
             msg.lang = isHebrew ? 'he-IL' : (isArabic ? 'ar-SA' : 'en-US');
 
-            // תיקון לטלפון: מציאת קול מתאים
+            // הכרחת הטלפון למצוא קול מתאים
             const voices = window.speechSynthesis.getVoices();
             const targetVoice = voices.find(v => v.lang.startsWith(msg.lang.split('-')[0]));
             if (targetVoice) msg.voice = targetVoice;
@@ -193,7 +183,7 @@
         const SpeechRec = window.webkitSpeechRecognition || window.SpeechRecognition;
         if (SpeechRec) {
             const r = new SpeechRec();
-            micBtn.onclick = () => { r.lang = ui[currentLang].lang; r.start(); micBtn.style.color = 'red'; };
+            micBtn.onclick = () => { r.lang = (currentLang === 'he' ? 'he-IL' : currentLang === 'ar' ? 'ar-SA' : 'en-US'); r.start(); micBtn.style.color = 'red'; };
             r.onresult = e => document.getElementById('user-input').value = e.results[0][0].transcript;
             r.onend = () => micBtn.style.color = '#54656f';
         }
