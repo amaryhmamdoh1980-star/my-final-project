@@ -66,11 +66,12 @@ def chat():
     חוק תמונות (למנוע התמונות באתר):
     אם המשתמש מבקש לראות תופעה, גרם שמיים, מבנה אטומי או סלע - סיים את התשובה בשורה חדשה בפורמט:
     [IMAGE_KEYWORD: ENGLISH_WORD]
+    למשל: [IMAGE_KEYWORD: limestone] או [IMAGE_KEYWORD: basalt].
     (השתמש במילה אחת באנגלית שמתארת את האובייקט).
 
     השאלה הנוכחית: {user_input}
     """
-        
+
     contents = []
     for msg in history:
         role = "user" if msg['role'] == "user" else "model"
