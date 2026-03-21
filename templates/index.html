@@ -6,7 +6,17 @@
     <title>המורה החכם</title>
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- ספריות Markdown ומתמטיקה -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], processEscapes: true },
+            options: { processHtmlClass: 'tex2jax_process' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
     <style>
         :root { --primary: #075e54; --bg: #e5ddd5; --user: #dcf8c6; --bot: #ffffff; }
         body { font-family: 'Assistant', sans-serif; background: var(--bg); margin: 0; display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
@@ -20,6 +30,10 @@
         #chat-window { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); }
         .message { max-width: 85%; padding: 12px; border-radius: 15px; font-size: 16px; line-height: 1.4; box-shadow: 0 1px 2px rgba(0,0,0,0.1); word-wrap: break-word; position: relative; }
         .message img { max-width: 100%; border-radius: 10px; margin-top: 10px; display: block; border: 1px solid #ddd; }
+        
+        /* עיצוב נוסחאות */
+        mjx-container { direction: ltr !important; overflow-x: auto; max-width: 100%; }
+
         .rtl .user { align-self: flex-start; background: var(--user); border-top-left-radius: 2px; }
         .rtl .bot { align-self: flex-end; background: var(--bot); border-top-right-radius: 2px; }
         .ltr .user { align-self: flex-end; background: var(--user); border-top-right-radius: 2px; }
@@ -32,6 +46,7 @@
         #user-input { flex: 1; padding: 12px; border-radius: 25px; border: 1px solid white; outline: none; font-size: 16px; }
         .btn-round { background: var(--primary); color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .icon-only { background: none; border: none; font-size: 22px; color: #54656f; cursor: pointer; }
+        #preview-box { display: none; padding: 5px; text-align: center; position: relative; }
     </style>
 </head>
 <body class="rtl" id="app-body">
@@ -55,7 +70,7 @@
         <div id="typing-bubble" class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
     </div>
     <div id="input-area">
-        <div id="preview-box" style="display:none; text-align:center; padding:5px;">
+        <div id="preview-box">
             <img id="preview-img-src" style="max-height:70px; border-radius:5px;">
             <button onclick="document.getElementById('file-in').value=''; document.getElementById('preview-box').style.display='none';">×</button>
         </div>
@@ -76,18 +91,25 @@
 
         function setLanguage(lang) {
             currentLang = lang;
-            const labels = { he: "המורה החכם", ar: "المعلم الذكي", en: "Smart Teacher" };
-            const inputs = { he: "הקלד שאלה...", ar: "اكتب سؤالاً...", en: "Type a question..." };
-            document.getElementById('txt-title').innerText = labels[lang];
-            document.getElementById('user-input').placeholder = inputs[lang];
-            document.getElementById('app-body').className = (lang === 'en' ? 'ltr' : 'rtl');
+            const ui = { 
+                he: { title: "המורה החכם", input: "הקלד שאלה...", welcome: "שלום! אני כאן בשבילך. איך אוכל לעזור לך היום?", dir: "rtl" }, 
+                ar: { title: "المعلم الذكي", input: "اكتب سؤالاً...", welcome: "مرحباً! أنا هنا من أجلك. كيف يمكنني مساعدتك اليوم؟", dir: "rtl" }, 
+                en: { title: "Smart Teacher", input: "Type a question...", welcome: "Hello! I'm here for you. How can I help you today?", dir: "ltr" } 
+            };
+            document.getElementById('txt-title').innerText = ui[lang].title;
+            document.getElementById('user-input').placeholder = ui[lang].input;
+            document.getElementById('txt-welcome').innerText = ui[lang].welcome;
+            document.getElementById('app-body').className = ui[lang].dir;
             document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.id === 'l-'+lang));
         }
 
         function showPreview(input) {
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
-                reader.onload = e => { document.getElementById('preview-img-src').src = e.target.result; document.getElementById('preview-box').style.display = 'block'; };
+                reader.onload = e => { 
+                    document.getElementById('preview-img-src').src = e.target.result;
+                    document.getElementById('preview-box').style.display = 'block';
+                };
                 reader.readAsDataURL(input.files[0]);
             }
         }
@@ -95,7 +117,8 @@
         async function send() {
             const input = document.getElementById('user-input');
             const text = input.value.trim();
-            const file = document.getElementById('file-in').files[0];
+            const fileIn = document.getElementById('file-in');
+            const file = fileIn.files[0];
             if (!text && !file) return;
 
             const userDiv = document.createElement('div');
@@ -120,70 +143,46 @@
                 const res = await fetch('/chat', { method: 'POST', body: formData });
                 const data = await res.json();
                 typing.style.display = 'none';
-                chatHistory.push({role: "user", text: text});
-                chatHistory.push({role: "model", text: data.reply});
+                chatHistory.push({role: "user", text: text}, {role: "model", text: data.reply});
                 addBotMessage(data.reply);
             } catch (e) { typing.style.display = 'none'; addBotMessage("Error."); }
         }
 
         function addBotMessage(text) {
             const div = document.createElement('div');
-            div.className = 'message bot';
+            div.className = 'message bot tex2jax_process';
             
             let cleanText = text;
             let imageHTML = "";
             const match = text.match(/\[IMAGE_KEYWORD:\s*(.*?)\]/i);
-            
             if (match) {
                 const keyword = match[1].trim();
-                // שימוש במקור תמונות יציב של תמונות אמיתיות
-                imageHTML = `<img src="https://loremflickr.com/600/400/${keyword},geology/all" alt="Geology">`;
+                imageHTML = `<img src="https://loremflickr.com/600/400/${keyword},science/all">`;
                 cleanText = text.replace(match[0], "");
             }
 
-            const contentDiv = document.createElement('div');
-            contentDiv.innerHTML = marked.parse(cleanText);
-            div.appendChild(contentDiv);
-            if (imageHTML) {
-                const container = document.createElement('div');
-                container.innerHTML = imageHTML;
-                div.appendChild(container);
-            }
-
+            div.innerHTML = `<div>${marked.parse(cleanText)}</div>${imageHTML}`;
+            
             const btn = document.createElement('button');
             btn.className = 'icon-only'; btn.innerHTML = '<i class="fas fa-volume-up"></i>';
-            btn.style.marginTop = "8px";
-            btn.onclick = () => handleVoice(btn, cleanText);
+            btn.onclick = () => {
+                if (window.speechSynthesis.speaking) { window.speechSynthesis.cancel(); return; }
+                const speakMsg = new SpeechSynthesisUtterance(cleanText.replace(/\$.*?\$/g, "").replace(/[*#`_]/g, ""));
+                msg.lang = (/[א-ת]/.test(cleanText)) ? 'he-IL' : (/[أ-י]/.test(cleanText) ? 'ar-SA' : 'en-US');
+                window.speechSynthesis.speak(msg);
+            };
             div.appendChild(btn);
 
             win.insertBefore(div, typing);
+            if (window.MathJax) MathJax.typesetPromise([div]);
             win.scrollTop = win.scrollHeight;
-        }
-
-        function handleVoice(btn, text) {
-            if (window.speechSynthesis.speaking) { window.speechSynthesis.cancel(); return; }
-            const clean = text.replace(/[*#`_]/g, "");
-            const msg = new SpeechSynthesisUtterance(clean);
-            
-            // זיהוי שפה
-            const isHebrew = /[א-ת]/.test(clean);
-            const isArabic = /[\u0600-\u06FF]/.test(clean);
-            msg.lang = isHebrew ? 'he-IL' : (isArabic ? 'ar-SA' : 'en-US');
-
-            // הכרחת הטלפון למצוא קול מתאים
-            const voices = window.speechSynthesis.getVoices();
-            const targetVoice = voices.find(v => v.lang.startsWith(msg.lang.split('-')[0]));
-            if (targetVoice) msg.voice = targetVoice;
-
-            msg.rate = 0.9;
-            window.speechSynthesis.speak(msg);
         }
 
         const micBtn = document.getElementById('mic-btn');
         const SpeechRec = window.webkitSpeechRecognition || window.SpeechRecognition;
         if (SpeechRec) {
             const r = new SpeechRec();
-            micBtn.onclick = () => { r.lang = (currentLang === 'he' ? 'he-IL' : currentLang === 'ar' ? 'ar-SA' : 'en-US'); r.start(); micBtn.style.color = 'red'; };
+            micBtn.onclick = () => { r.lang = (currentLang === 'en' ? 'en-US' : currentLang === 'ar' ? 'ar-SA' : 'he-IL'); r.start(); micBtn.style.color = 'red'; };
             r.onresult = e => document.getElementById('user-input').value = e.results[0][0].transcript;
             r.onend = () => micBtn.style.color = '#54656f';
         }
