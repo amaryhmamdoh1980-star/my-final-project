@@ -53,31 +53,32 @@ def chat():
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
     headers = {'Content-Type': 'application/json'}
     
-    # הוראה מערכתית קשוחה - המודל לא יכול להתעלם מזה
-    system_instruction = """
-    ROLE: Expert Professor.
-    MANDATORY RULE: If the user asks for a map, diagram, rock, or any visual concept, you MUST end your response with a tag: [IMAGE_KEYWORD: detailed description in English].
-    CRITICAL: Do NOT say "I cannot create images". Your system will handle the image generation based on your tag. 
-    If you describe a visual thing without the tag, you are failing your student.
-    """
+    # הזרקת דוגמאות (Few-Shot) כדי להכריח את המודל לציית
+    contents = [
+        {
+            "role": "user", 
+            "parts": [{"text": "SYSTEM: You are an Academic Professor. RULE: When a user asks for a map or image, you MUST include [IMAGE_KEYWORD: English description] at the end of your response. Example: if asked for a map of Israel, you write your text and end with [IMAGE_KEYWORD: detailed map of Israel]. Do not say you cannot create images."}]
+        },
+        {
+            "role": "model", 
+            "parts": [{"text": "I understand. I will provide the required [IMAGE_KEYWORD] tag for all visual requests."}]
+        }
+    ]
 
-    contents = []
-    # הוספת הוראת המערכת כחלק מההקשר
-    contents.append({"role": "user", "parts": [{"text": system_instruction}]})
-    contents.append({"role": "model", "parts": [{"text": "Understood. I will always provide the [IMAGE_KEYWORD] tag for visual requests."}]})
-
+    # הוספת ההיסטוריה האמיתית
     for msg in history:
         role = "user" if msg['role'] == "user" else "model"
         contents.append({"role": role, "parts": [{"text": msg['text']}]})
 
-    contents.append({"role": "user", "parts": [{"text": user_input}]})
-    
+    # הוספת השאלה הנוכחית
+    current_user_part = {"role": "user", "parts": [{"text": user_input}]}
     if image_file:
         try:
             img_data = base64.b64encode(image_file.read()).decode('utf-8')
-            contents[-1]["parts"].append({"inline_data": {"mime_type": image_file.content_type, "data": img_data}})
+            current_user_part["parts"].append({"inline_data": {"mime_type": image_file.content_type, "data": img_data}})
         except: pass
-    
+    contents.append(current_user_part)
+
     payload = {"contents": contents}
 
     try:
@@ -87,12 +88,13 @@ def chat():
             reply = data['candidates'][0]['content']['parts'][0]['text']
             
             image_url = None
-            # חיפוש חכם של התגית בטקסט
+            # חילוץ התגית באמצעות Regex חזק
             match = re.search(r"\[IMAGE_KEYWORD:\s*(.*?)\]", reply, re.IGNORECASE)
             if match:
                 keyword = match.group(1).strip()
-                # ניקוי התגית מהתשובה כדי שלא תפריע למשתמש
+                # ניקוי התגית מהטקסט שחוזר למשתמש
                 reply = re.sub(r"\[IMAGE_KEYWORD:.*?\]", "", reply).strip()
+                # יצירת ה-URL
                 image_url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(keyword)}?width=1024&height=1024&nologo=true"
 
             try:
