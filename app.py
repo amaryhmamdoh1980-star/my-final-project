@@ -53,54 +53,47 @@ def chat():
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
     headers = {'Content-Type': 'application/json'}
     
-    # הוראת מערכת קשיחה - המודל חייב לציית לזה
-    system_instruction = {
-        "parts": [{"text": "אתה 'המורה החכם'. חוק בל יעבור: אם המשתמש מבקש מפה, תמונה או תרשים, עליך לסיים את התשובה בשורה: [IMAGE_KEYWORD: English description]. אל תגיד שאתה לא יכול לצייר. תן תיאור מפורט באנגלית בתוך התגית."}]
-    }
+    # הנחיה אגרסיבית למודל
+    system_instruction = "You are 'The Smart Teacher'. If the user asks for a map or image, you MUST provide it by adding [IMAGE_KEYWORD: English description] at the end. DO NOT REFUSE."
 
     contents = []
     for msg in history:
         role = "user" if msg['role'] == "user" else "model"
         contents.append({"role": role, "parts": [{"text": msg['text']}]})
 
-    # השאלה הנוכחית עם תזכורת חזקה בסוף
-    prompt_with_trigger = f"{user_input}\n(תזכורת: אם ביקשתי מפה או תמונה, אל תשכח לסיים בתגית [IMAGE_KEYWORD: ...])"
-    
-    current_user_parts = [{"text": prompt_with_trigger}]
-    if image_file:
-        try:
-            img_data = base64.b64encode(image_file.read()).decode('utf-8')
-            current_user_parts.append({"inline_data": {"mime_type": image_file.content_type, "data": img_data}})
-        except: pass
-    
-    contents.append({"role": "user", "parts": current_user_parts})
-
-    payload = {
-        "contents": contents,
-        "system_instruction": system_instruction
-    }
+    # הזרקת ההוראה ישירות לשאלה האחרונה כדי שתהיה הכי חזקה
+    contents.append({
+        "role": "user", 
+        "parts": [{"text": f"INSTRUCTION: {system_instruction}\nUSER QUESTION: {user_input}"}]
+    })
 
     try:
-        response = requests.post(url, json=payload, headers=headers)
+        response = requests.post(url, json={"contents": contents}, headers=headers)
         data = response.json()
+        
         if response.status_code == 200:
             reply = data['candidates'][0]['content']['parts'][0]['text']
-            
             image_url = None
-            # חילוץ התגית וניקוי הטקסט
+            
+            # 1. ניסיון חילוץ תגית מהמודל
             match = re.search(r"\[IMAGE_KEYWORD:\s*(.*?)\]", reply, re.IGNORECASE)
             if match:
                 keyword = match.group(1).strip()
-                # יצירת ה-URL למחולל התמונות
-                image_url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(keyword)}?width=1024&height=768&nologo=true"
-                # הסרת התגית מהטקסט שהמשתמש רואה
                 reply = re.sub(r"\[IMAGE_KEYWORD:.*?\]", "", reply).strip()
+                image_url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(keyword)}?width=1024&height=768&nologo=true"
+            
+            # 2. מנגנון הגנה: אם המודל שכח תגית אבל המשתמש ביקש מפה/ציור
+            if not image_url and any(word in user_input for word in ["מפה", "צייר", "תראה", "תמונה", "שרטט"]):
+                # השרת מייצר מילת מפתח מהקלט של המשתמש כגיבוי
+                fallback_kw = user_input.replace("מפה", "map of").replace("צייר", "").replace("תראה לי", "").strip()
+                image_url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(fallback_kw)}?width=1024&height=768&nologo=true"
 
             try:
                 db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input or "תמונה", reply)
             except: pass
             
             return jsonify({"reply": reply, "image_url": image_url})
+        
         return jsonify({"reply": "שגיאת שרת גוגל."}), response.status_code
     except Exception as e:
         return jsonify({"reply": f"תקלה: {str(e)}"}), 500

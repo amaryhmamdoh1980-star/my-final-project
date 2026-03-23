@@ -123,27 +123,38 @@
             chatHistory.push({role: "user", text: text});
             chatHistory.push({role: "model", text: data.reply});
             
-            // שליחה לפונקציה המעודכנת שמציגה את התמונה בתוך הבועה
+            // שינוי כאן: מעבירים את ה-image_url שהגיע מהשרת
             addBotMessage(data.reply, data.image_url);
         } catch (e) { typing.style.display = 'none'; addBotMessage("Error."); }
     }
 
-    function addBotMessage(text, image_url = null) {
+    function addBotMessage(text, serverImageUrl = null) {
         const div = document.createElement('div');
         div.className = 'message bot';
         
+        let cleanText = text;
+        let finalImageUrl = serverImageUrl;
+
+        // חיפוש תגית בטקסט אם השרת לא שלח URL ישיר
+        const match = text.match(/\[IMAGE_KEYWORD:\s*(.*?)\]/i);
+        if (match) {
+            if (!finalImageUrl) {
+                const keyword = match[1].trim();
+                finalImageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(keyword)}?width=1024&height=768&nologo=true`;
+            }
+            cleanText = text.replace(match[0], "").trim();
+        }
+
         const contentDiv = document.createElement('div');
-        contentDiv.innerHTML = marked.parse(text);
+        contentDiv.innerHTML = marked.parse(cleanText);
         div.appendChild(contentDiv);
         
-        if (image_url) {
+        if (finalImageUrl) {
             const img = document.createElement('img');
-            img.src = image_url;
+            img.src = finalImageUrl;
             img.style.width = "100%";
             img.style.borderRadius = "10px";
             img.style.marginTop = "10px";
-            img.style.display = "block";
-            // אם התמונה נכשלת, היא פשוט לא תוצג
             img.onerror = function() { this.style.display='none'; };
             div.appendChild(img);
         }
@@ -151,7 +162,7 @@
         const btn = document.createElement('button');
         btn.className = 'icon-only'; btn.innerHTML = '<i class="fas fa-volume-up"></i>';
         btn.style.marginTop = "8px";
-        btn.onclick = () => handleVoice(btn, text);
+        btn.onclick = () => handleVoice(btn, cleanText);
         div.appendChild(btn);
 
         win.insertBefore(div, typing);
@@ -162,11 +173,9 @@
         if (window.speechSynthesis.speaking) { window.speechSynthesis.cancel(); return; }
         const clean = text.replace(/[*#`_]/g, "");
         const msg = new SpeechSynthesisUtterance(clean);
-        
         const isHebrew = /[א-ת]/.test(clean);
         const isArabic = /[\u0600-\u06FF]/.test(clean);
         msg.lang = isHebrew ? 'he-IL' : (isArabic ? 'ar-SA' : 'en-US');
-
         msg.rate = 0.9;
         window.speechSynthesis.speak(msg);
     }
