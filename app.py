@@ -2,6 +2,7 @@ import os
 import requests
 import base64
 import json
+import re
 from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
@@ -52,33 +53,31 @@ def chat():
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
     headers = {'Content-Type': 'application/json'}
     
-    # הנחיה הרבה יותר חזקה למודל
-    prompt_text = f"""
-    אתה 'המורה החכם' - פרופסור ומדען מומחה. 
-    ענה תמיד ברמה אקדמית גבוהה מאוד.
-
-    חוק קריטי ליצירת תמונות:
-    אם המשתמש מבקש לראות מפה, סלע, תופעה גיאולוגית או כל אובייקט ויזואלי, אתה חייב (חובה!) להוסיף בסוף התשובה שלך שורה בפורמט הזה:
-    [IMAGE_KEYWORD: detailed description in english]
-    
-    דוגמה: אם ביקשו סלע בזלת, בסוף התשובה כתוב: [IMAGE_KEYWORD: detailed macro photo of black basalt rock with small holes]
-
-    השאלה הנוכחית: {user_input}
+    # הוראה מערכתית קשוחה - המודל לא יכול להתעלם מזה
+    system_instruction = """
+    ROLE: Expert Professor.
+    MANDATORY RULE: If the user asks for a map, diagram, rock, or any visual concept, you MUST end your response with a tag: [IMAGE_KEYWORD: detailed description in English].
+    CRITICAL: Do NOT say "I cannot create images". Your system will handle the image generation based on your tag. 
+    If you describe a visual thing without the tag, you are failing your student.
     """
 
     contents = []
+    # הוספת הוראת המערכת כחלק מההקשר
+    contents.append({"role": "user", "parts": [{"text": system_instruction}]})
+    contents.append({"role": "model", "parts": [{"text": "Understood. I will always provide the [IMAGE_KEYWORD] tag for visual requests."}]})
+
     for msg in history:
         role = "user" if msg['role'] == "user" else "model"
         contents.append({"role": role, "parts": [{"text": msg['text']}]})
 
-    current_parts = [{"text": prompt_text}]
+    contents.append({"role": "user", "parts": [{"text": user_input}]})
+    
     if image_file:
         try:
             img_data = base64.b64encode(image_file.read()).decode('utf-8')
-            current_parts.append({"inline_data": {"mime_type": image_file.content_type, "data": img_data}})
+            contents[-1]["parts"].append({"inline_data": {"mime_type": image_file.content_type, "data": img_data}})
         except: pass
     
-    contents.append({"role": "user", "parts": current_parts})
     payload = {"contents": contents}
 
     try:
@@ -88,15 +87,13 @@ def chat():
             reply = data['candidates'][0]['content']['parts'][0]['text']
             
             image_url = None
-            # חילוץ חכם יותר של מילת המפתח (גם אם היא באמצע הטקסט)
-            if "[IMAGE_KEYWORD:" in reply:
-                import re
-                match = re.search(r"\[IMAGE_KEYWORD:\s*(.*?)\]", reply)
-                if match:
-                    keyword = match.group(1).strip()
-                    # ניקוי התגית מהתשובה
-                    reply = re.sub(r"\[IMAGE_KEYWORD:.*?\]", "", reply).strip()
-                    image_url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(keyword)}?width=1024&height=1024&nologo=true"
+            # חיפוש חכם של התגית בטקסט
+            match = re.search(r"\[IMAGE_KEYWORD:\s*(.*?)\]", reply, re.IGNORECASE)
+            if match:
+                keyword = match.group(1).strip()
+                # ניקוי התגית מהתשובה כדי שלא תפריע למשתמש
+                reply = re.sub(r"\[IMAGE_KEYWORD:.*?\]", "", reply).strip()
+                image_url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(keyword)}?width=1024&height=1024&nologo=true"
 
             try:
                 db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input or "תמונה", reply)
@@ -106,6 +103,7 @@ def chat():
         return jsonify({"reply": "שגיאת שרת גוגל."}), response.status_code
     except Exception as e:
         return jsonify({"reply": f"תקלה: {str(e)}"}), 500
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
