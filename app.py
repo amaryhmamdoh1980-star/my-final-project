@@ -53,32 +53,32 @@ def chat():
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
     headers = {'Content-Type': 'application/json'}
     
-    # הנחיה מדויקת למודל להפקת מילות מפתח קצרות באנגלית
-    prompt_text = f"""
-    אתה 'המורה החכם' - פרופסור ומדען מומחה.
-    ענה תמיד ברמה אקדמית גבוהה.
-    חוק תמונות: אם המשתמש מבקש לראות מפה, סרטוט, סלע או אובייקט - סיים את התשובה בשורה הבאה בדיוק:
-    [IMAGE_KEYWORD: short_description]
-    חשוב: השתמש ב-3 עד 5 מילים באנגלית בלבד. בלי תווים מיוחדים.
-
-    השאלה הנוכחית: {user_input}
-    """
+    # הוראת מערכת קשיחה - המודל חייב לציית לזה
+    system_instruction = {
+        "parts": [{"text": "אתה 'המורה החכם'. חוק בל יעבור: אם המשתמש מבקש מפה, תמונה או תרשים, עליך לסיים את התשובה בשורה: [IMAGE_KEYWORD: English description]. אל תגיד שאתה לא יכול לצייר. תן תיאור מפורט באנגלית בתוך התגית."}]
+    }
 
     contents = []
     for msg in history:
         role = "user" if msg['role'] == "user" else "model"
         contents.append({"role": role, "parts": [{"text": msg['text']}]})
 
-    current_parts = [{"text": prompt_text}]
+    # השאלה הנוכחית עם תזכורת חזקה בסוף
+    prompt_with_trigger = f"{user_input}\n(תזכורת: אם ביקשתי מפה או תמונה, אל תשכח לסיים בתגית [IMAGE_KEYWORD: ...])"
     
+    current_user_parts = [{"text": prompt_with_trigger}]
     if image_file:
         try:
             img_data = base64.b64encode(image_file.read()).decode('utf-8')
-            current_parts.append({"inline_data": {"mime_type": image_file.content_type, "data": img_data}})
+            current_user_parts.append({"inline_data": {"mime_type": image_file.content_type, "data": img_data}})
         except: pass
     
-    contents.append({"role": "user", "parts": current_parts})
-    payload = {"contents": contents}
+    contents.append({"role": "user", "parts": current_user_parts})
+
+    payload = {
+        "contents": contents,
+        "system_instruction": system_instruction
+    }
 
     try:
         response = requests.post(url, json=payload, headers=headers)
@@ -86,15 +86,14 @@ def chat():
         if response.status_code == 200:
             reply = data['candidates'][0]['content']['parts'][0]['text']
             
-            # בדיקה אם קיימת תגית תמונה בטקסט
             image_url = None
+            # חילוץ התגית וניקוי הטקסט
             match = re.search(r"\[IMAGE_KEYWORD:\s*(.*?)\]", reply, re.IGNORECASE)
             if match:
                 keyword = match.group(1).strip()
-                # ניקוי מילות המפתח מתווים שבורים
-                safe_keyword = re.sub(r'[^\w\s]', '', keyword)
-                image_url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(safe_keyword)}?width=1024&height=768&nologo=true"
-                # הסרת התגית מהטקסט שיוצג למשתמש
+                # יצירת ה-URL למחולל התמונות
+                image_url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(keyword)}?width=1024&height=768&nologo=true"
+                # הסרת התגית מהטקסט שהמשתמש רואה
                 reply = re.sub(r"\[IMAGE_KEYWORD:.*?\]", "", reply).strip()
 
             try:

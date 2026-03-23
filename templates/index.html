@@ -123,30 +123,27 @@
             chatHistory.push({role: "user", text: text});
             chatHistory.push({role: "model", text: data.reply});
             
-            // שימוש בפונקציה המעודכנת שמקבלת גם URL של תמונה
+            // שליחה לפונקציה המעודכנת שמציגה את התמונה בתוך הבועה
             addBotMessage(data.reply, data.image_url);
         } catch (e) { typing.style.display = 'none'; addBotMessage("Error."); }
     }
 
-    function addBotMessage(text, serverImageUrl = null) {
+    function addBotMessage(text, image_url = null) {
         const div = document.createElement('div');
         div.className = 'message bot';
         
-        let cleanText = text;
-        let finalImageUrl = serverImageUrl;
-
         const contentDiv = document.createElement('div');
-        contentDiv.innerHTML = marked.parse(cleanText);
+        contentDiv.innerHTML = marked.parse(text);
         div.appendChild(contentDiv);
         
-        if (finalImageUrl) {
+        if (image_url) {
             const img = document.createElement('img');
-            img.src = finalImageUrl;
+            img.src = image_url;
             img.style.width = "100%";
             img.style.borderRadius = "10px";
             img.style.marginTop = "10px";
             img.style.display = "block";
-            // אם התמונה נכשלת, נסה Flickr כגיבוי
+            // אם התמונה נכשלת, היא פשוט לא תוצג
             img.onerror = function() { this.style.display='none'; };
             div.appendChild(img);
         }
@@ -154,7 +151,7 @@
         const btn = document.createElement('button');
         btn.className = 'icon-only'; btn.innerHTML = '<i class="fas fa-volume-up"></i>';
         btn.style.marginTop = "8px";
-        btn.onclick = () => handleVoice(btn, cleanText);
+        btn.onclick = () => handleVoice(btn, text);
         div.appendChild(btn);
 
         win.insertBefore(div, typing);
