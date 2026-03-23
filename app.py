@@ -49,25 +49,23 @@ def chat():
     if not user_input and not image_file:
         return jsonify({"reply": "Empty message"}), 400
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
+    # שימוש בגרסה 2.0-flash ליציבות מול ה-API
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
     headers = {'Content-Type': 'application/json'}
     
-    # הנחיה אקדמית ברמה גבוהה למדעים מדויקים ומטאפיזיקה
+    # הנחיה מעודכנת ליצירת תיאורי מפות ותמונות מדויקים
     prompt_text = f"""
-    אתה 'המורה החכם' - פרופסור ומדען מומחה בעל ידע אקדמי מעמיק בתחומים הבאים:
-    פיזיקה (כולל פיזיקה גרעינית וקוונטית), מתמטיקה גבוהה, אסטרונומיה, כימיה, גיאולוגיה, היסטוריה ומטאפיזיקה.
+    אתה 'המורה החכם' - פרופסור ומדען מומחה בעל ידע אקדמי מעמיק בפיזיקה, מתמטיקה, אסטרונומיה, גיאולוגיה ומטאפיזיקה.
 
-    חוקי התשובה שלך:
-    1. ענה ברמה אקדמית גבוהה, השתמש במונחים מקצועיים וספק הסברים מעמיקים ומבוססים.
-    2. ענה תמיד בשפה שבה פנו אליך (עברית, ערבית או אנגלית).
-    3. אם השאלה כוללת נוסחאות מתמטיות או פיזיקליות, הסבר את הלוגיקה שמאחוריהן.
-    4. שמור על אובייקטיביות מדעית ודיוק מרבי.
+    חוקי התשובה:
+    1. ענה ברמה אקדמית גבוהה ובשפה שבה פנו אליך.
+    2. שמור על אובייקטיביות ודיוק מדעי.
 
-    חוק תמונות (למנוע התמונות באתר):
-    אם המשתמש מבקש לראות תופעה, גרם שמיים, מבנה אטומי או סלע - סיים את התשובה בשורה חדשה בפורמט:
-    [IMAGE_KEYWORD: ENGLISH_WORD]
-    למשל: [IMAGE_KEYWORD: limestone] או [IMAGE_KEYWORD: basalt].
-    (השתמש במילה אחת באנגלית שמתארת את האובייקט).
+    חוק תמונות (קריטי):
+    אם המשתמש מבקש לראות מפה, תופעה, מבנה אטומי או גרם שמיים - סיים את התשובה בשורה חדשה בפורמט:
+    [IMAGE_KEYWORD: DETAILED_DESCRIPTION_IN_ENGLISH]
+    השתמש בתיאור מפורט באנגלית שמתאים לשרטוט מדעי או מפה גיאוגרפית.
+    למשל: [IMAGE_KEYWORD: detailed tectonic plates map of earth, high resolution, scientific style]
 
     השאלה הנוכחית: {user_input}
     """
@@ -93,10 +91,32 @@ def chat():
         data = response.json()
         if response.status_code == 200:
             reply = data['candidates'][0]['content']['parts'][0]['text']
+            
+            # לוגיקה ליצירת תמונה
+            image_url = None
+            if "[IMAGE_KEYWORD:" in reply:
+                try:
+                    # חילוץ מילת המפתח/התיאור מהתשובה
+                    keyword_part = reply.split("[IMAGE_KEYWORD:")[1].split("]")[0].strip()
+                    # ניקוי התשובה שתוצג למשתמש
+                    reply = reply.split("[IMAGE_KEYWORD:")[0].strip()
+                    
+                    # יצירת URL לתמונה באמצעות מודל FLUX (מעולה למפות ושרטוטים)
+                    encoded_keyword = requests.utils.quote(keyword_part)
+                    image_url = f"https://image.pollinations.ai/prompt/{encoded_keyword}?width=1024&height=1024&model=flux"
+                except:
+                    pass
+
             try:
                 db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input or "תמונה", reply)
             except: pass
-            return jsonify({"reply": reply})
+            
+            # החזרת התשובה וה-URL של התמונה ב-JSON
+            return jsonify({
+                "reply": reply,
+                "image_url": image_url
+            })
+            
         return jsonify({"reply": "שגיאת שרת גוגל."}), response.status_code
     except Exception as e:
         return jsonify({"reply": f"תקלה: {str(e)}"}), 500
