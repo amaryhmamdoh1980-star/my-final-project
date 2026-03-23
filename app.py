@@ -32,44 +32,37 @@ class DB:
 db = DB()
 API_KEY = os.environ.get("GOOGLE_API_KEY")
 
-MAP_WORDS  = ["מפה", "מפת"]
-IMAGE_WORDS = ["צייר", "תמונה", "תראה לי", "תצלום", "איור"]
+VISUAL_WORDS = ["מפה", "מפת", "צייר", "תמונה", "תראה לי", "תצלום", "איור"]
 
-def build_map_url(user_input):
-    """מפה אמיתית מ-OpenStreetMap דרך nominatim + static map"""
-    # חילוץ שם המקום מהקלט
-    place = user_input
-    for word in ["מפה של", "מפת", "מפה"]:
-        place = place.replace(word, "").strip()
-
-    # Nominatim — מחזיר קואורדינטות
-    try:
-        nom_url = f"https://nominatim.openstreetmap.org/search?q={requests.utils.quote(place)}&format=json&limit=1"
-        nom_res = requests.get(nom_url, headers={"User-Agent": "SmartTeacher/1.0"}, timeout=5)
-        nom_data = nom_res.json()
-        if nom_data:
-            lat = nom_data[0]['lat']
-            lon = nom_data[0]['lon']
-            # Static map מ-openstreetmap.org דרך staticmap
-            return f"https://staticmap.openstreetmap.de/staticmap.php?center={lat},{lon}&zoom=7&size=1024x768&maptype=mapnik"
-    except:
-        pass
-
-    # גיבוי — מפה ישירה ללא קואורדינטות
-    encoded = requests.utils.quote(place)
-    return f"https://staticmap.openstreetmap.de/staticmap.php?center=31.5,35.0&zoom=7&size=1024x768&maptype=mapnik"
-
-def build_image_url(user_input):
-    """תמונה אמיתית מ-Unsplash"""
-    translations = [
-        ("צייר לי", ""), ("צייר", ""),
-        ("תמונה של", ""), ("תמונה", ""),
-        ("תראה לי", ""), ("תצלום של", ""),
-        ("תצלום", ""), ("איור של", ""), ("איור", ""),
+def build_unsplash_url(user_input):
+    """תמונה מ-Unsplash לפי נושא"""
+    removals = [
+        "מפה של", "מפת", "מפה",
+        "צייר לי", "צייר",
+        "תמונה של", "תמונה",
+        "תראה לי את", "תראה לי",
+        "תצלום של", "תצלום",
+        "איור של", "איור",
     ]
     query = user_input
-    for heb, eng in translations:
-        query = query.replace(heb, eng).strip()
+    for word in removals:
+        query = query.replace(word, "").strip()
+
+    # תרגום מילים נפוצות לאנגלית
+    translations = {
+        "ישראל": "Israel", "ירושלים": "Jerusalem", "תל אביב": "Tel Aviv",
+        "ים": "sea", "הר": "mountain", "מדבר": "desert", "יער": "forest",
+        "אבן": "stone", "סלע": "rock", "גיר": "limestone", "חוף": "beach",
+        "עיר": "city", "כפר": "village", "נהר": "river", "אגם": "lake",
+        "בעל חיים": "animal", "דינוזאור": "dinosaur", "פרח": "flower",
+        "עץ": "tree", "שמיים": "sky", "שקיעה": "sunset", "זריחה": "sunrise",
+    }
+    for heb, eng in translations.items():
+        query = query.replace(heb, eng)
+
+    query = query.strip()
+    if not query:
+        query = "nature"
 
     encoded = requests.utils.quote(query)
     return f"https://source.unsplash.com/1024x768/?{encoded}"
@@ -115,15 +108,8 @@ def chat():
     if not user_input and not image_file:
         return jsonify({"reply": "Empty message"}), 400
 
-    wants_map   = any(word in user_input for word in MAP_WORDS)
-    wants_image = any(word in user_input for word in IMAGE_WORDS)
-
-    if wants_map:
-        image_url = build_map_url(user_input)
-    elif wants_image:
-        image_url = build_image_url(user_input)
-    else:
-        image_url = None
+    wants_visual = any(word in user_input for word in VISUAL_WORDS)
+    image_url = build_unsplash_url(user_input) if wants_visual else None
 
     try:
         reply, status = ask_gemini(user_input, history, image_file)
