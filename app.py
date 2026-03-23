@@ -35,7 +35,6 @@ API_KEY = os.environ.get("GOOGLE_API_KEY")
 IMAGE_WORDS = ["מפה", "צייר", "תראה לי", "תמונה", "תצלום", "איור"]
 
 def build_image_url(user_input):
-    """בונה URL לתמונה ישירות מהקלט של המשתמש"""
     translations = [
         ("מפה של", "detailed map of"),
         ("מפה", "detailed map of"),
@@ -50,8 +49,32 @@ def build_image_url(user_input):
     result = user_input
     for heb, eng in translations:
         result = result.replace(heb, eng)
-    result = result.strip()
-    return f"https://image.pollinations.ai/prompt/{requests.utils.quote(result)}?width=1024&height=768&nologo=true"
+    return f"https://image.pollinations.ai/prompt/{requests.utils.quote(result.strip())}?width=1024&height=768&nologo=true"
+
+def ask_gemini(user_input, history, image_file):
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
+    headers = {'Content-Type': 'application/json'}
+
+    prompt_text = f"אתה 'המורה החכם' - פרופסור ומדען מומחה. ענה תמיד ברמה אקדמית גבוהה.\nהשאלה: {user_input}"
+
+    contents = []
+    for msg in history:
+        role = "user" if msg['role'] == "user" else "model"
+        contents.append({"role": role, "parts": [{"text": msg['text']}]})
+
+    contents.append({"role": "user", "parts": [{"text": prompt_text}]})
+
+    if image_file:
+        try:
+            img_data = base64.b64encode(image_file.read()).decode('utf-8')
+            contents[-1]["parts"].append({"inline_data": {"mime_type": image_file.content_type, "data": img_data}})
+        except: pass
+
+    response = requests.post(url, json={"contents": contents}, headers=headers)
+    data = response.json()
+    if response.status_code == 200:
+        return data['candidates'][0]['content']['parts'][0]['text'], response.status_code
+    return "שגיאת שרת גוגל.", response.status_code
 
 @app.route("/")
 def index():
@@ -62,7 +85,7 @@ def chat():
     user_input = request.form.get("message", "")
     image_file = request.files.get("image")
     history_raw = request.form.get("history", "[]")
-    
+
     try:
         history = json.loads(history_raw)
     except:
@@ -71,52 +94,29 @@ def chat():
     if not user_input and not image_file:
         return jsonify({"reply": "Empty message"}), 400
 
-    # בדיקה מיידית: האם המשתמש ביקש תמונה/מפה?
     wants_image = any(word in user_input for word in IMAGE_WORDS)
-    image_url = build_image_url(user_input) if wants_image else None
 
-    # המודל שביקשת - 2.5 Flash
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
-    headers = {'Content-Type': 'application/json'}
-    
-    prompt_text = f"""
-    אתה 'המורה החכם' - פרופסור ומדען מומחה.
-    ענה תמיד ברמה אקדמית גבוהה.
-    השאלה: {user_input}
-    """
-
-    contents = []
-    for msg in history:
-        role = "user" if msg['role'] == "user" else "model"
-        contents.append({"role": role, "parts": [{"text": msg['text']}]})
-    
-    contents.append({"role": "user", "parts": [{"text": prompt_text}]})
-
-    if image_file:
+    # אם ביקשו תמונה — בנה URL מיד וגם שאל את Gemini לתיאור טקסטואלי
+    if wants_image:
+        image_url = build_image_url(user_input)
         try:
-            img_data = base64.b64encode(image_file.read()).decode('utf-8')
-            contents[-1]["parts"].append({"inline_data": {"mime_type": image_file.content_type, "data": img_data}})
+            reply, _ = ask_gemini(user_input, history, image_file)
+        except:
+            reply = "הנה התמונה שביקשת:"
+        try:
+            db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input, reply)
         except: pass
+        return jsonify({"reply": reply, "image_url": image_url})
 
+    # שאלה רגילה — רק Gemini
     try:
-        response = requests.post(url, json={"contents": contents}, headers=headers)
-        data = response.json()
-        if response.status_code == 200:
-            reply = data['candidates'][0]['content']['parts'][0]['text']
-
-            # אם המודל בכל זאת החזיר תגית — נשתמש בה במקום
-            match = re.search(r"\[IMAGE_KEYWORD:\s*(.*?)\]", reply, re.IGNORECASE)
-            if match:
-                keyword = match.group(1).strip()
-                reply = re.sub(r"\[IMAGE_KEYWORD:.*?\]", "", reply).strip()
-                image_url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(keyword)}?width=1024&height=768&nologo=true"
-
-            try:
-                db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input or "תמונה", reply)
-            except: pass
-            
-            return jsonify({"reply": reply, "image_url": image_url})
-        return jsonify({"reply": "שגיאת שרת גוגל."}), response.status_code
+        reply, status = ask_gemini(user_input, history, image_file)
+        if status != 200:
+            return jsonify({"reply": reply}), status
+        try:
+            db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input or "תמונה", reply)
+        except: pass
+        return jsonify({"reply": reply, "image_url": None})
     except Exception as e:
         return jsonify({"reply": f"תקלה: {str(e)}"}), 500
 
