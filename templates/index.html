@@ -93,40 +93,41 @@
     }
 
     async function send() {
-        const input = document.getElementById('user-input');
-        const text = input.value.trim();
-        const file = document.getElementById('file-in').files[0];
-        if (!text && !file) return;
+    const input = document.getElementById('user-input');
+    const text = input.value.trim();
+    const file = document.getElementById('file-in').files[0];
+    if (!text && !file) return;
 
-        const userDiv = document.createElement('div');
-        userDiv.className = 'message user';
-        if (file) {
-            const img = document.createElement('img');
-            img.src = document.getElementById('preview-img-src').src;
-            userDiv.appendChild(img);
-        }
-        const t = document.createElement('div'); t.innerText = text; userDiv.appendChild(t);
-        win.insertBefore(userDiv, typing);
-        input.value = ''; document.getElementById('preview-box').style.display='none';
-        typing.style.display = 'flex';
-        win.scrollTop = win.scrollHeight;
-
-        const formData = new FormData();
-        formData.append('message', text);
-        if (file) formData.append('image', file);
-        formData.append('history', JSON.stringify(chatHistory));
-
-        try {
-            const res = await fetch('/chat', { method: 'POST', body: formData });
-            const data = await res.json();
-            typing.style.display = 'none';
-            chatHistory.push({role: "user", text: text});
-            chatHistory.push({role: "model", text: data.reply});
-            
-            // שליחה לפונקציית הבוט עם ה-reply וה-image_url מהשרת
-            addBotMessage(data.reply, data.image_url);
-        } catch (e) { typing.style.display = 'none'; addBotMessage("Error connecting to server."); }
+    const userDiv = document.createElement('div');
+    userDiv.className = 'message user';
+    if (file) {
+        const img = document.createElement('img');
+        img.src = document.getElementById('preview-img-src').src;
+        userDiv.appendChild(img);
     }
+    const t = document.createElement('div'); t.innerText = text; userDiv.appendChild(t);
+    win.insertBefore(userDiv, typing);
+    input.value = ''; document.getElementById('preview-box').style.display='none';
+    typing.style.display = 'flex';
+    win.scrollTop = win.scrollHeight;
+
+    const formData = new FormData();
+    formData.append('message', text);
+    if (file) formData.append('image', file);
+    formData.append('history', JSON.stringify(chatHistory));
+
+    try {
+        const res = await fetch('/chat', { method: 'POST', body: formData });
+        const data = await res.json();
+        typing.style.display = 'none';
+        
+        chatHistory.push({role: "user", text: text});
+        chatHistory.push({role: "model", text: data.reply});
+        
+        // כאן הקסם - שולחים גם את התשובה וגם את ה-URL של התמונה
+        addBotMessage(data.reply, data.image_url);
+    } catch (e) { typing.style.display = 'none'; addBotMessage("Error."); }
+}
 
     function addBotMessage(text, serverImageUrl = null) {
     const div = document.createElement('div');

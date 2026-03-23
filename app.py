@@ -49,16 +49,21 @@ def chat():
     if not user_input and not image_file:
         return jsonify({"reply": "Empty message"}), 400
 
-    # המודל שביקשת שעובד לך
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
     headers = {'Content-Type': 'application/json'}
     
+    # הנחיה הרבה יותר חזקה למודל
     prompt_text = f"""
     אתה 'המורה החכם' - פרופסור ומדען מומחה. 
-    חוק חשוב: אם המשתמש מבקש לראות מפה, סלע, אטום או כל דבר ויזואלי - אתה חייב להוסיף בסוף התשובה שורה כזו:
-    [IMAGE_KEYWORD: detailed description in english]
+    ענה תמיד ברמה אקדמית גבוהה מאוד.
 
-    השאלה: {user_input}
+    חוק קריטי ליצירת תמונות:
+    אם המשתמש מבקש לראות מפה, סלע, תופעה גיאולוגית או כל אובייקט ויזואלי, אתה חייב (חובה!) להוסיף בסוף התשובה שלך שורה בפורמט הזה:
+    [IMAGE_KEYWORD: detailed description in english]
+    
+    דוגמה: אם ביקשו סלע בזלת, בסוף התשובה כתוב: [IMAGE_KEYWORD: detailed macro photo of black basalt rock with small holes]
+
+    השאלה הנוכחית: {user_input}
     """
 
     contents = []
@@ -82,12 +87,16 @@ def chat():
         if response.status_code == 200:
             reply = data['candidates'][0]['content']['parts'][0]['text']
             
-            # יצירת הכתובת לתמונה
             image_url = None
+            # חילוץ חכם יותר של מילת המפתח (גם אם היא באמצע הטקסט)
             if "[IMAGE_KEYWORD:" in reply:
-                keyword = reply.split("[IMAGE_KEYWORD:")[1].split("]")[0].strip()
-                # פורמט URL יציב יותר
-                image_url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(keyword)}?width=1024&height=1024&nologo=true"
+                import re
+                match = re.search(r"\[IMAGE_KEYWORD:\s*(.*?)\]", reply)
+                if match:
+                    keyword = match.group(1).strip()
+                    # ניקוי התגית מהתשובה
+                    reply = re.sub(r"\[IMAGE_KEYWORD:.*?\]", "", reply).strip()
+                    image_url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(keyword)}?width=1024&height=1024&nologo=true"
 
             try:
                 db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input or "תמונה", reply)
