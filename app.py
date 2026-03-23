@@ -32,36 +32,57 @@ class DB:
 db = DB()
 API_KEY = os.environ.get("GOOGLE_API_KEY")
 
-IMAGE_WORDS = ["מפה", "צייר", "תראה לי", "תמונה", "תצלום", "איור"]
+MAP_WORDS  = ["מפה", "מפת"]
+IMAGE_WORDS = ["צייר", "תמונה", "תראה לי", "תצלום", "איור"]
+
+def build_map_url(user_input):
+    """מפה אמיתית מ-OpenStreetMap דרך nominatim + static map"""
+    # חילוץ שם המקום מהקלט
+    place = user_input
+    for word in ["מפה של", "מפת", "מפה"]:
+        place = place.replace(word, "").strip()
+
+    # Nominatim — מחזיר קואורדינטות
+    try:
+        nom_url = f"https://nominatim.openstreetmap.org/search?q={requests.utils.quote(place)}&format=json&limit=1"
+        nom_res = requests.get(nom_url, headers={"User-Agent": "SmartTeacher/1.0"}, timeout=5)
+        nom_data = nom_res.json()
+        if nom_data:
+            lat = nom_data[0]['lat']
+            lon = nom_data[0]['lon']
+            # Static map מ-openstreetmap.org דרך staticmap
+            return f"https://staticmap.openstreetmap.de/staticmap.php?center={lat},{lon}&zoom=7&size=1024x768&maptype=mapnik"
+    except:
+        pass
+
+    # גיבוי — מפה ישירה ללא קואורדינטות
+    encoded = requests.utils.quote(place)
+    return f"https://staticmap.openstreetmap.de/staticmap.php?center=31.5,35.0&zoom=7&size=1024x768&maptype=mapnik"
 
 def build_image_url(user_input):
+    """תמונה אמיתית מ-Unsplash"""
     translations = [
-        ("מפה של", "detailed map of"),
-        ("מפה", "detailed map of"),
-        ("צייר לי", "detailed illustration of"),
-        ("צייר", "detailed illustration of"),
-        ("תמונה של", "photo of"),
-        ("תמונה", "photo of"),
-        ("תראה לי", "image of"),
-        ("תצלום של", "photograph of"),
-        ("איור של", "illustration of"),
+        ("צייר לי", ""), ("צייר", ""),
+        ("תמונה של", ""), ("תמונה", ""),
+        ("תראה לי", ""), ("תצלום של", ""),
+        ("תצלום", ""), ("איור של", ""), ("איור", ""),
     ]
-    result = user_input
+    query = user_input
     for heb, eng in translations:
-        result = result.replace(heb, eng)
-    return f"https://image.pollinations.ai/prompt/{requests.utils.quote(result.strip())}?width=1024&height=768&nologo=true"
+        query = query.replace(heb, eng).strip()
+
+    encoded = requests.utils.quote(query)
+    return f"https://source.unsplash.com/1024x768/?{encoded}"
 
 def ask_gemini(user_input, history, image_file):
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
     headers = {'Content-Type': 'application/json'}
-
     prompt_text = f"אתה 'המורה החכם' - פרופסור ומדען מומחה. ענה תמיד ברמה אקדמית גבוהה.\nהשאלה: {user_input}"
 
     contents = []
     for msg in history:
         role = "user" if msg['role'] == "user" else "model"
         contents.append({"role": role, "parts": [{"text": msg['text']}]})
-
     contents.append({"role": "user", "parts": [{"text": prompt_text}]})
 
     if image_file:
@@ -94,21 +115,16 @@ def chat():
     if not user_input and not image_file:
         return jsonify({"reply": "Empty message"}), 400
 
+    wants_map   = any(word in user_input for word in MAP_WORDS)
     wants_image = any(word in user_input for word in IMAGE_WORDS)
 
-    # אם ביקשו תמונה — בנה URL מיד וגם שאל את Gemini לתיאור טקסטואלי
-    if wants_image:
+    if wants_map:
+        image_url = build_map_url(user_input)
+    elif wants_image:
         image_url = build_image_url(user_input)
-        try:
-            reply, _ = ask_gemini(user_input, history, image_file)
-        except:
-            reply = "הנה התמונה שביקשת:"
-        try:
-            db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input, reply)
-        except: pass
-        return jsonify({"reply": reply, "image_url": image_url})
+    else:
+        image_url = None
 
-    # שאלה רגילה — רק Gemini
     try:
         reply, status = ask_gemini(user_input, history, image_file)
         if status != 200:
@@ -116,7 +132,7 @@ def chat():
         try:
             db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input or "תמונה", reply)
         except: pass
-        return jsonify({"reply": reply, "image_url": None})
+        return jsonify({"reply": reply, "image_url": image_url})
     except Exception as e:
         return jsonify({"reply": f"תקלה: {str(e)}"}), 500
 
