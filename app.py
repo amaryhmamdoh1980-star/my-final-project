@@ -32,6 +32,27 @@ class DB:
 db = DB()
 API_KEY = os.environ.get("GOOGLE_API_KEY")
 
+IMAGE_WORDS = ["מפה", "צייר", "תראה לי", "תמונה", "תצלום", "איור"]
+
+def build_image_url(user_input):
+    """בונה URL לתמונה ישירות מהקלט של המשתמש"""
+    translations = [
+        ("מפה של", "detailed map of"),
+        ("מפה", "detailed map of"),
+        ("צייר לי", "detailed illustration of"),
+        ("צייר", "detailed illustration of"),
+        ("תמונה של", "photo of"),
+        ("תמונה", "photo of"),
+        ("תראה לי", "image of"),
+        ("תצלום של", "photograph of"),
+        ("איור של", "illustration of"),
+    ]
+    result = user_input
+    for heb, eng in translations:
+        result = result.replace(heb, eng)
+    result = result.strip()
+    return f"https://image.pollinations.ai/prompt/{requests.utils.quote(result)}?width=1024&height=768&nologo=true"
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -50,68 +71,45 @@ def chat():
     if not user_input and not image_file:
         return jsonify({"reply": "Empty message"}), 400
 
+    # בדיקה מיידית: האם המשתמש ביקש תמונה/מפה?
+    wants_image = any(word in user_input for word in IMAGE_WORDS)
+    image_url = build_image_url(user_input) if wants_image else None
+
+    # המודל שביקשת - 2.5 Flash
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
     headers = {'Content-Type': 'application/json'}
+    
+    prompt_text = f"""
+    אתה 'המורה החכם' - פרופסור ומדען מומחה.
+    ענה תמיד ברמה אקדמית גבוהה.
+    השאלה: {user_input}
+    """
 
     contents = []
     for msg in history:
         role = "user" if msg['role'] == "user" else "model"
         contents.append({"role": role, "parts": [{"text": msg['text']}]})
+    
+    contents.append({"role": "user", "parts": [{"text": prompt_text}]})
 
-    current_parts = [{"text": user_input}]
     if image_file:
         try:
             img_data = base64.b64encode(image_file.read()).decode('utf-8')
-            current_parts.append({"inline_data": {"mime_type": image_file.content_type, "data": img_data}})
+            contents[-1]["parts"].append({"inline_data": {"mime_type": image_file.content_type, "data": img_data}})
         except: pass
 
-    contents.append({"role": "user", "parts": current_parts})
-
-    system_instruction = {
-        "parts": [{"text": """אתה 'המורה החכם' - פרופסור ומדען מומחה. ענה תמיד ברמה אקדמית גבוהה.
-
-חוק חובה ומוחלט: אם המשתמש מבקש מפה, תמונה, ציור, או כתב "תראה לי" - 
-חובה לסיים את התשובה בתגית זו בדיוק, בשורה נפרדת:
-[IMAGE_KEYWORD: תיאור מפורט באנגלית של מה לצייר]
-
-דוגמאות:
-- "צור לי מפה של ישראל" → [IMAGE_KEYWORD: detailed map of Israel showing cities borders and geography]
-- "תראה לי תמונה של אבן גיר" → [IMAGE_KEYWORD: limestone rock sample close up geology]
-- "צייר לי דינוזאור" → [IMAGE_KEYWORD: realistic dinosaur illustration Tyrannosaurus Rex]
-
-אם אין בקשה לתמונה/מפה — אל תכתוב את התגית כלל."""}]
-    }
-
     try:
-        response = requests.post(url, json={
-            "system_instruction": system_instruction,
-            "contents": contents
-        }, headers=headers)
+        response = requests.post(url, json={"contents": contents}, headers=headers)
         data = response.json()
         if response.status_code == 200:
             reply = data['candidates'][0]['content']['parts'][0]['text']
-            
-            image_url = None
-            # חילוץ תגית מהמודל
+
+            # אם המודל בכל זאת החזיר תגית — נשתמש בה במקום
             match = re.search(r"\[IMAGE_KEYWORD:\s*(.*?)\]", reply, re.IGNORECASE)
             if match:
                 keyword = match.group(1).strip()
                 reply = re.sub(r"\[IMAGE_KEYWORD:.*?\]", "", reply).strip()
                 image_url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(keyword)}?width=1024&height=768&nologo=true"
-
-            # מנגנון גיבוי משופר עם תרגום לאנגלית
-            if not image_url and any(word in user_input for word in ["מפה", "צייר", "תראה לי", "תמונה"]):
-                translations = {
-                    "מפה של": "detailed map of",
-                    "מפה": "detailed map of",
-                    "צייר לי": "illustration of",
-                    "תמונה של": "photo of",
-                    "תראה לי": "image of"
-                }
-                fallback_term = user_input
-                for heb, eng in translations.items():
-                    fallback_term = fallback_term.replace(heb, eng)
-                image_url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(fallback_term)}?width=1024&height=768&nologo=true"
 
             try:
                 db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input or "תמונה", reply)
