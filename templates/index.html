@@ -133,39 +133,37 @@
     div.className = 'message bot';
     
     let cleanText = text;
-    let imageHTML = "";
-
-    // 1. נבדוק אם קיבלנו URL מוכן מהשרת
-    if (serverImageUrl) {
-        imageHTML = `<img src="${serverImageUrl}" alt="Map/Illustration" style="width:100%; border-radius:10px; margin-top:10px; cursor:pointer;" onclick="window.open('${serverImageUrl}', '_blank')">`;
-    }
-
-    // 2. ננקה את ה-Tag מהטקסט של גוגל
+    // ניקוי התגית מהטקסט
     const match = text.match(/\[IMAGE_KEYWORD:\s*(.*?)\]/i);
     if (match) {
         cleanText = text.replace(match[0], "").trim();
-        // אם השרת לא שלח URL (למשל בהיסטוריה), ניצור אותו כאן
-        if (!imageHTML) {
-            const kw = encodeURIComponent(match[1].trim());
-            const imgUrl = `https://pollinations.ai/p/${kw}?width=1024&height=1024&nologo=true`;
-            imageHTML = `<img src="${imgUrl}" style="width:100%; border-radius:10px; margin-top:10px;">`;
-        }
     }
 
+    // הוספת הטקסט
     const contentDiv = document.createElement('div');
     contentDiv.innerHTML = marked.parse(cleanText);
     div.appendChild(contentDiv);
 
-    // 3. הוספת התמונה לגוף ההודעה
-    if (imageHTML) {
-        const container = document.createElement('div');
-        container.innerHTML = imageHTML;
-        div.appendChild(container);
+    // הוספת התמונה - אם יש URL מהשרת או מהטקסט
+    let imageUrl = serverImageUrl;
+    if (!imageUrl && match) {
+        imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(match[1].trim())}?width=1024&height=1024&nologo=true`;
     }
 
+    if (imageUrl) {
+        const img = document.createElement('img');
+        img.src = imageUrl;
+        img.style.width = "100%";
+        img.style.borderRadius = "10px";
+        img.style.marginTop = "10px";
+        img.style.display = "block"; // מבטיח שהתמונה תתפוס שורה
+        img.onerror = function() { this.style.display='none'; }; // מסתיר אם יש שגיאת טעינה
+        div.appendChild(img);
+    }
+
+    // כפתור הקראה
     const btn = document.createElement('button');
     btn.className = 'icon-only'; btn.innerHTML = '<i class="fas fa-volume-up"></i>';
-    btn.style.marginTop = "8px";
     btn.onclick = () => handleVoice(btn, cleanText);
     div.appendChild(btn);
 
