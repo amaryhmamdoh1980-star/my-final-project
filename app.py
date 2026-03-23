@@ -49,25 +49,16 @@ def chat():
     if not user_input and not image_file:
         return jsonify({"reply": "Empty message"}), 400
 
-    # שימוש בגרסה 2.0-flash ליציבות מול ה-API
+    # חזרה לגרסה היציבה ביותר שעובדת בטוח
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
     headers = {'Content-Type': 'application/json'}
     
-    # הנחיה מעודכנת ליצירת תיאורי מפות ותמונות מדויקים
     prompt_text = f"""
-    אתה 'המורה החכם' - פרופסור ומדען מומחה בעל ידע אקדמי מעמיק בפיזיקה, מתמטיקה, אסטרונומיה, גיאולוגיה ומטאפיזיקה.
-
-    חוקי התשובה:
-    1. ענה ברמה אקדמית גבוהה ובשפה שבה פנו אליך.
-    2. שמור על אובייקטיביות ודיוק מדעי.
-
-    חוק תמונות (קריטי):
-    אם המשתמש מבקש לראות מפה, תופעה, מבנה אטומי או גרם שמיים - סיים את התשובה בשורה חדשה בפורמט:
-    [IMAGE_KEYWORD: DETAILED_DESCRIPTION_IN_ENGLISH]
-    השתמש בתיאור מפורט באנגלית שמתאים לשרטוט מדעי או מפה גיאוגרפית.
-    למשל: [IMAGE_KEYWORD: detailed tectonic plates map of earth, high resolution, scientific style]
-
-    השאלה הנוכחית: {user_input}
+    אתה 'המורה החכם' - פרופסור ומדען.
+    ענה ברמה אקדמית גבוהה.
+    אם המשתמש מבקש לראות מפה או תמונה, סיים את התשובה בפורמט: [IMAGE_KEYWORD: English description]
+    
+    השאלה: {user_input}
     """
 
     contents = []
@@ -89,37 +80,29 @@ def chat():
     try:
         response = requests.post(url, json=payload, headers=headers)
         data = response.json()
+        
         if response.status_code == 200:
             reply = data['candidates'][0]['content']['parts'][0]['text']
             
-            # לוגיקה ליצירת תמונה
+            # לוגיקה פשוטה לתמונה
             image_url = None
             if "[IMAGE_KEYWORD:" in reply:
-                try:
-                    # חילוץ מילת המפתח/התיאור מהתשובה
-                    keyword_part = reply.split("[IMAGE_KEYWORD:")[1].split("]")[0].strip()
-                    # ניקוי התשובה שתוצג למשתמש
-                    reply = reply.split("[IMAGE_KEYWORD:")[0].strip()
-                    
-                    # יצירת URL לתמונה באמצעות מודל FLUX (מעולה למפות ושרטוטים)
-                    encoded_keyword = requests.utils.quote(keyword_part)
-                    image_url = f"https://image.pollinations.ai/prompt/{encoded_keyword}?width=1024&height=1024&model=flux"
-                except:
-                    pass
+                keyword = reply.split("[IMAGE_KEYWORD:")[1].split("]")[0].strip()
+                reply = reply.split("[IMAGE_KEYWORD:")[0].strip()
+                image_url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(keyword)}?width=1024&height=1024&model=flux"
 
             try:
                 db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input or "תמונה", reply)
             except: pass
             
-            # החזרת התשובה וה-URL של התמונה ב-JSON
-            return jsonify({
-                "reply": reply,
-                "image_url": image_url
-            })
-            
-        return jsonify({"reply": "שגיאת שרת גוגל."}), response.status_code
+            return jsonify({"reply": reply, "image_url": image_url})
+        
+        # שינוי קריטי: אם יש שגיאה, נחזיר את ההודעה המקורית מגוגל כדי שנבין למה!
+        error_info = data.get('error', {}).get('message', 'Unknown Google Error')
+        return jsonify({"reply": f"שגיאת גוגל: {error_info}"}), response.status_code
+
     except Exception as e:
-        return jsonify({"reply": f"תקלה: {str(e)}"}), 500
+        return jsonify({"reply": f"תקלה בשרת: {str(e)}"}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
