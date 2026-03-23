@@ -2,7 +2,6 @@ import os
 import requests
 import base64
 import json
-import re
 from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
@@ -53,32 +52,30 @@ def chat():
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
     headers = {'Content-Type': 'application/json'}
     
-    # הזרקת דוגמאות (Few-Shot) כדי להכריח את המודל לציית
-    contents = [
-        {
-            "role": "user", 
-            "parts": [{"text": "SYSTEM: You are an Academic Professor. RULE: When a user asks for a map or image, you MUST include [IMAGE_KEYWORD: English description] at the end of your response. Example: if asked for a map of Israel, you write your text and end with [IMAGE_KEYWORD: detailed map of Israel]. Do not say you cannot create images."}]
-        },
-        {
-            "role": "model", 
-            "parts": [{"text": "I understand. I will provide the required [IMAGE_KEYWORD] tag for all visual requests."}]
-        }
-    ]
+    # הנחיה אקדמית עם חוק תמונות נוקשה כדי שלא יסרב
+    prompt_text = f"""
+    אתה 'המורה החכם' - פרופסור ומדען מומחה.
+    חוק קריטי: אם המשתמש מבקש לראות מפה, תרשים או אובייקט מדעי - סיים את התשובה בשורה:
+    [IMAGE_KEYWORD: English description]
+    אל תגיד שאתה לא יכול לייצר תמונות. המערכת שלי תייצר אותן עבורך לפי התיאור שתיתן.
 
-    # הוספת ההיסטוריה האמיתית
+    השאלה הנוכחית: {user_input}
+    """
+
+    contents = []
     for msg in history:
         role = "user" if msg['role'] == "user" else "model"
         contents.append({"role": role, "parts": [{"text": msg['text']}]})
 
-    # הוספת השאלה הנוכחית
-    current_user_part = {"role": "user", "parts": [{"text": user_input}]}
+    current_parts = [{"text": prompt_text}]
+    
     if image_file:
         try:
             img_data = base64.b64encode(image_file.read()).decode('utf-8')
-            current_user_part["parts"].append({"inline_data": {"mime_type": image_file.content_type, "data": img_data}})
+            current_parts.append({"inline_data": {"mime_type": image_file.content_type, "data": img_data}})
         except: pass
-    contents.append(current_user_part)
-
+    
+    contents.append({"role": "user", "parts": current_parts})
     payload = {"contents": contents}
 
     try:
@@ -86,22 +83,10 @@ def chat():
         data = response.json()
         if response.status_code == 200:
             reply = data['candidates'][0]['content']['parts'][0]['text']
-            
-            image_url = None
-            # חילוץ התגית באמצעות Regex חזק
-            match = re.search(r"\[IMAGE_KEYWORD:\s*(.*?)\]", reply, re.IGNORECASE)
-            if match:
-                keyword = match.group(1).strip()
-                # ניקוי התגית מהטקסט שחוזר למשתמש
-                reply = re.sub(r"\[IMAGE_KEYWORD:.*?\]", "", reply).strip()
-                # יצירת ה-URL
-                image_url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(keyword)}?width=1024&height=1024&nologo=true"
-
             try:
                 db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input or "תמונה", reply)
             except: pass
-            
-            return jsonify({"reply": reply, "image_url": image_url})
+            return jsonify({"reply": reply})
         return jsonify({"reply": "שגיאת שרת גוגל."}), response.status_code
     except Exception as e:
         return jsonify({"reply": f"תקלה: {str(e)}"}), 500

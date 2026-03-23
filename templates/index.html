@@ -67,7 +67,8 @@
             <button class="btn-round" onclick="send()"><i class="fas fa-paper-plane"></i></button>
         </div>
     </div>
-
+code
+Code
 <script>
     let currentLang = 'he';
     let chatHistory = [];
@@ -93,94 +94,86 @@
     }
 
     async function send() {
-    const input = document.getElementById('user-input');
-    const text = input.value.trim();
-    const file = document.getElementById('file-in').files[0];
-    if (!text && !file) return;
+        const input = document.getElementById('user-input');
+        const text = input.value.trim();
+        const file = document.getElementById('file-in').files[0];
+        if (!text && !file) return;
 
-    const userDiv = document.createElement('div');
-    userDiv.className = 'message user';
-    if (file) {
-        const img = document.createElement('img');
-        img.src = document.getElementById('preview-img-src').src;
-        userDiv.appendChild(img);
+        const userDiv = document.createElement('div');
+        userDiv.className = 'message user';
+        if (file) {
+            const img = document.createElement('img');
+            img.src = document.getElementById('preview-img-src').src;
+            userDiv.appendChild(img);
+        }
+        const t = document.createElement('div'); t.innerText = text; userDiv.appendChild(t);
+        win.insertBefore(userDiv, typing);
+        input.value = ''; document.getElementById('preview-box').style.display='none';
+        typing.style.display = 'flex';
+        win.scrollTop = win.scrollHeight;
+
+        const formData = new FormData();
+        formData.append('message', text);
+        if (file) formData.append('image', file);
+        formData.append('history', JSON.stringify(chatHistory));
+
+        try {
+            const res = await fetch('/chat', { method: 'POST', body: formData });
+            const data = await res.json();
+            typing.style.display = 'none';
+            chatHistory.push({role: "user", text: text});
+            chatHistory.push({role: "model", text: data.reply});
+            addBotMessage(data.reply);
+        } catch (e) { typing.style.display = 'none'; addBotMessage("Error."); }
     }
-    const t = document.createElement('div'); t.innerText = text; userDiv.appendChild(t);
-    win.insertBefore(userDiv, typing);
-    input.value = ''; document.getElementById('preview-box').style.display='none';
-    typing.style.display = 'flex';
-    win.scrollTop = win.scrollHeight;
 
-    const formData = new FormData();
-    formData.append('message', text);
-    if (file) formData.append('image', file);
-    formData.append('history', JSON.stringify(chatHistory));
-
-    try {
-        const res = await fetch('/chat', { method: 'POST', body: formData });
-        const data = await res.json();
-        typing.style.display = 'none';
+    function addBotMessage(text) {
+        const div = document.createElement('div');
+        div.className = 'message bot';
         
-        chatHistory.push({role: "user", text: text});
-        chatHistory.push({role: "model", text: data.reply});
+        let cleanText = text;
+        let imageHTML = "";
+        const match = text.match(/\[IMAGE_KEYWORD:\s*(.*?)\]/i);
         
-        // כאן הקסם - שולחים גם את התשובה וגם את ה-URL של התמונה
-        addBotMessage(data.reply, data.image_url);
-    } catch (e) { typing.style.display = 'none'; addBotMessage("Error."); }
-}
+        if (match) {
+            const keyword = match[1].trim();
+            // שינוי ל-Pollinations כדי לתמוך ביצירת מפות ושרטוטים (במקום Flickr)
+            const imgUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(keyword)}?width=800&height=600&nologo=true`;
+            imageHTML = `<img src="${imgUrl}" alt="Scientific Illustration" style="width:100%; border-radius:10px; margin-top:10px;">`;
+            cleanText = text.replace(match[0], "");
+        }
 
-    function addBotMessage(text, serverImageUrl = null) {
-    const div = document.createElement('div');
-    div.className = 'message bot';
-    
-    let cleanText = text;
-    // ניקוי התגית מהטקסט
-    const match = text.match(/\[IMAGE_KEYWORD:\s*(.*?)\]/i);
-    if (match) {
-        cleanText = text.replace(match[0], "").trim();
+        const contentDiv = document.createElement('div');
+        contentDiv.innerHTML = marked.parse(cleanText);
+        div.appendChild(contentDiv);
+        
+        if (imageHTML) {
+            const container = document.createElement('div');
+            container.innerHTML = imageHTML;
+            div.appendChild(container);
+        }
+
+        const btn = document.createElement('button');
+        btn.className = 'icon-only'; btn.innerHTML = '<i class="fas fa-volume-up"></i>';
+        btn.style.marginTop = "8px";
+        btn.onclick = () => handleVoice(btn, cleanText);
+        div.appendChild(btn);
+
+        win.insertBefore(div, typing);
+        win.scrollTop = win.scrollHeight;
     }
-
-    // הוספת הטקסט
-    const contentDiv = document.createElement('div');
-    contentDiv.innerHTML = marked.parse(cleanText);
-    div.appendChild(contentDiv);
-
-    // הוספת התמונה - אם יש URL מהשרת או מהטקסט
-    let imageUrl = serverImageUrl;
-    if (!imageUrl && match) {
-        imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(match[1].trim())}?width=1024&height=1024&nologo=true`;
-    }
-
-    if (imageUrl) {
-        const img = document.createElement('img');
-        img.src = imageUrl;
-        img.style.width = "100%";
-        img.style.borderRadius = "10px";
-        img.style.marginTop = "10px";
-        img.style.display = "block"; // מבטיח שהתמונה תתפוס שורה
-        img.onerror = function() { this.style.display='none'; }; // מסתיר אם יש שגיאת טעינה
-        div.appendChild(img);
-    }
-
-    // כפתור הקראה
-    const btn = document.createElement('button');
-    btn.className = 'icon-only'; btn.innerHTML = '<i class="fas fa-volume-up"></i>';
-    btn.onclick = () => handleVoice(btn, cleanText);
-    div.appendChild(btn);
-
-    win.insertBefore(div, typing);
-    win.scrollTop = win.scrollHeight;
-}
 
     function handleVoice(btn, text) {
         if (window.speechSynthesis.speaking) { window.speechSynthesis.cancel(); return; }
         const clean = text.replace(/[*#`_]/g, "");
         const msg = new SpeechSynthesisUtterance(clean);
         
+        // זיהוי שפה
         const isHebrew = /[א-ת]/.test(clean);
         const isArabic = /[\u0600-\u06FF]/.test(clean);
         msg.lang = isHebrew ? 'he-IL' : (isArabic ? 'ar-SA' : 'en-US');
 
+        // הכרחת הטלפון למצוא קול מתאים
         const voices = window.speechSynthesis.getVoices();
         const targetVoice = voices.find(v => v.lang.startsWith(msg.lang.split('-')[0]));
         if (targetVoice) msg.voice = targetVoice;
