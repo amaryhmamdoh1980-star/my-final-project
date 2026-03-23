@@ -55,9 +55,12 @@ def chat():
     headers = {'Content-Type': 'application/json'}
     
     prompt_text = f"""
-    אתה 'המורה החכם' - פרופסור ומדען מומחה.
-    ענה תמיד ברמה אקדמית גבוהה.
-    חוק: אם המשתמש מבקש מפה או תמונה, סיים בפורמט [IMAGE_KEYWORD: English description].
+    אתה 'המורה החכם' - פרופסור ומדען מומחה. ענה תמיד ברמה אקדמית גבוהה.
+
+    חוק חובה: אם המשתמש מבקש מפה, תמונה, ציור, או כתב "תראה לי" -
+    חובה לסיים את התשובה בתגית זו בדיוק: [IMAGE_KEYWORD: תיאור באנגלית]
+    לדוגמה: [IMAGE_KEYWORD: detailed map of Israel with cities]
+
     השאלה: {user_input}
     """
 
@@ -89,9 +92,18 @@ def chat():
                 reply = re.sub(r"\[IMAGE_KEYWORD:.*?\]", "", reply).strip()
                 image_url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(keyword)}?width=1024&height=768&nologo=true"
             
-            # מנגנון גיבוי: אם המשתמש ביקש מפה/ציור והמודל שכח
+            # מנגנון גיבוי משופר עם תרגום לאנגלית
             if not image_url and any(word in user_input for word in ["מפה", "צייר", "תראה לי", "תמונה"]):
-                fallback_term = user_input.replace("מפה של", "detailed map of").replace("צייר לי", "illustration of").strip()
+                translations = {
+                    "מפה של": "detailed map of",
+                    "מפה": "detailed map of",
+                    "צייר לי": "illustration of",
+                    "תמונה של": "photo of",
+                    "תראה לי": "image of"
+                }
+                fallback_term = user_input
+                for heb, eng in translations.items():
+                    fallback_term = fallback_term.replace(heb, eng)
                 image_url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(fallback_term)}?width=1024&height=768&nologo=true"
 
             try:
