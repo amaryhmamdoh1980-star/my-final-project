@@ -52,12 +52,11 @@ def chat():
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
     headers = {'Content-Type': 'application/json'}
     
-    # הנחיה אקדמית עם חוק תמונות נוקשה כדי שלא יסרב
     prompt_text = f"""
     אתה 'המורה החכם' - פרופסור ומדען מומחה.
-    חוק קריטי: אם המשתמש מבקש לראות מפה, תרשים או אובייקט מדעי - סיים את התשובה בשורה:
-    [IMAGE_KEYWORD: English description]
-    אל תגיד שאתה לא יכול לייצר תמונות. המערכת שלי תייצר אותן עבורך לפי התיאור שתיתן.
+    חוק תמונות: אם המשתמש מבקש לראות מפה, תופעה או אובייקט - סיים את התשובה בפורמט הבא:
+    [IMAGE_KEYWORD: description]
+    השתמש בתיאור קצר ומדויק באנגלית (עד 5 מילים).
 
     השאלה הנוכחית: {user_input}
     """
@@ -68,7 +67,6 @@ def chat():
         contents.append({"role": role, "parts": [{"text": msg['text']}]})
 
     current_parts = [{"text": prompt_text}]
-    
     if image_file:
         try:
             img_data = base64.b64encode(image_file.read()).decode('utf-8')
