@@ -2,6 +2,7 @@ import os
 import requests
 import base64
 import json
+import re
 from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
@@ -33,30 +34,63 @@ API_KEY = os.environ.get("GOOGLE_API_KEY")
 
 IMAGE_WORDS = ["מפה", "מפת", "צייר", "תמונה", "תראה לי", "תצלום", "איור"]
 
+# מילון תרגום עברית → אנגלית
+HE_TO_EN = {
+    # פעלי בקשה
+    "תראה לי את": "show me", "תראה לי": "show me",
+    "צייר לי": "draw", "צייר": "draw",
+    "תמונה של": "photo of", "תמונה": "photo",
+    "מפה של": "map of", "מפת": "map of", "מפה": "map of",
+    "תצלום של": "photograph of", "תצלום": "photograph",
+    "איור של": "illustration of", "איור": "illustration",
+    # מילות נושא נפוצות
+    "ישראל": "Israel", "ירושלים": "Jerusalem", "תל אביב": "Tel Aviv",
+    "חיפה": "Haifa", "אילת": "Eilat", "הנגב": "Negev",
+    "הגליל": "Galilee", "הכרמל": "Carmel", "הירדן": "Jordan River",
+    "ים המלח": "Dead Sea", "ים כנרת": "Sea of Galilee",
+    "ים התיכון": "Mediterranean Sea", "ים סוף": "Red Sea",
+    "הר": "mountain", "הרים": "mountains", "מדבר": "desert",
+    "יער": "forest", "חוף": "beach", "נהר": "river", "אגם": "lake",
+    "עיר": "city", "כפר": "village", "שמיים": "sky",
+    "שקיעה": "sunset", "זריחה": "sunrise", "ענן": "cloud",
+    # סלעים ומינרלים
+    "סלע": "rock", "אבן": "stone", "סלעים": "rocks",
+    "אבן גיר": "limestone", "גיר": "limestone",
+    "דולומיט": "dolomite", "בזלת": "basalt",
+    "גרניט": "granite", "חול": "sandstone", "חצץ": "gravel",
+    "מינרל": "mineral", "מינרלים": "minerals", "קריסטל": "crystal",
+    "רצפה": "rock floor", "מחשוף": "rock outcrop",
+    # בעלי חיים
+    "דינוזאור": "dinosaur", "פיל": "elephant", "אריה": "lion",
+    "נמר": "leopard", "זאב": "wolf", "שועל": "fox",
+    "נשר": "eagle", "דג": "fish", "כריש": "shark",
+    # צמחים
+    "עץ": "tree", "פרח": "flower", "ורד": "rose",
+    "דקל": "palm tree", "קקטוס": "cactus",
+    # כללי
+    "שמש": "sun", "ירח": "moon", "כוכב": "star",
+    "אש": "fire", "מים": "water", "קרח": "ice",
+    "של": "", "את": "", "לי": "", "אז": "",
+}
+
+def translate_to_english(text):
+    """מתרגם טקסט עברי לאנגלית לפי מילון"""
+    result = text
+    for heb, eng in HE_TO_EN.items():
+        result = result.replace(heb, eng)
+    # ניקוי רווחים כפולים
+    result = re.sub(r'\s+', ' ', result).strip()
+    # אם נשאר עברית — תרגם כ-generic
+    if re.search(r'[\u0590-\u05FF]', result):
+        result = re.sub(r'[\u0590-\u05FF\s]+', ' ', result).strip()
+        if not result:
+            result = "nature landscape"
+    return result
+
 def build_image_url(user_input):
-    """בניית URL לתמונה ישירות מהקלט — ללא תלות ב-Gemini"""
-    translations = [
-        ("מפה של", "map of"),
-        ("מפת", "map of"),
-        ("מפה", "map of"),
-        ("צייר לי", "illustration of"),
-        ("צייר", "illustration of"),
-        ("תמונה של", "photo of"),
-        ("תמונה", "photo of"),
-        ("תראה לי את", "image of"),
-        ("תראה לי", "image of"),
-        ("תצלום של", "photograph of"),
-        ("תצלום", "photograph of"),
-        ("איור של", "illustration of"),
-        ("איור", "illustration of"),
-    ]
-    result = user_input
-    for heb, eng in translations:
-        result = result.replace(heb, eng).strip()
-    if not result:
-        result = "nature"
-    print(f"[DEBUG] image keyword: {result}")
-    return f"https://image.pollinations.ai/prompt/{requests.utils.quote(result)}?width=1024&height=768&nologo=true"
+    english_query = translate_to_english(user_input)
+    print(f"[DEBUG] translated: '{user_input}' → '{english_query}'")
+    return f"https://image.pollinations.ai/prompt/{requests.utils.quote(english_query)}?width=1024&height=768&nologo=true"
 
 @app.route("/")
 def index():
@@ -76,10 +110,8 @@ def chat():
     if not user_input and not image_file:
         return jsonify({"reply": "Empty message"}), 400
 
-    # בדיקה מיידית לפני Gemini
     wants_image = any(word in user_input for word in IMAGE_WORDS)
     image_url = build_image_url(user_input) if wants_image else None
-    print(f"[DEBUG] user_input={user_input!r}, wants_image={wants_image}, image_url={image_url}")
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
     headers = {'Content-Type': 'application/json'}
@@ -109,7 +141,6 @@ def chat():
         data = response.json()
         if response.status_code == 200:
             reply = data['candidates'][0]['content']['parts'][0]['text']
-            print(f"[DEBUG] gemini reply (first 200): {reply[:200]!r}")
             try:
                 db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input or "תמונה", reply)
             except: pass
