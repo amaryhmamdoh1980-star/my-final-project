@@ -34,57 +34,45 @@ API_KEY = os.environ.get("GOOGLE_API_KEY")
 
 IMAGE_WORDS = ["מפה", "מפת", "צייר", "תמונה", "תראה לי", "תצלום", "איור"]
 
-# מילון תרגום עברית → אנגלית
 HE_TO_EN = {
-    # פעלי בקשה
-    "תראה לי את": "show me", "תראה לי": "show me",
-    "צייר לי": "draw", "צייר": "draw",
-    "תמונה של": "photo of", "תמונה": "photo",
+    "תראה לי את": "", "תראה לי": "",
+    "צייר לי": "", "צייר": "",
+    "תמונה של": "", "תמונה": "",
     "מפה של": "map of", "מפת": "map of", "מפה": "map of",
-    "תצלום של": "photograph of", "תצלום": "photograph",
-    "איור של": "illustration of", "איור": "illustration",
-    # מילות נושא נפוצות
+    "תצלום של": "", "תצלום": "",
+    "איור של": "", "איור": "",
+    "של": "", "את": "", "לי": "", "אז": "",
     "ישראל": "Israel", "ירושלים": "Jerusalem", "תל אביב": "Tel Aviv",
-    "חיפה": "Haifa", "אילת": "Eilat", "הנגב": "Negev",
-    "הגליל": "Galilee", "הכרמל": "Carmel", "הירדן": "Jordan River",
-    "ים המלח": "Dead Sea", "ים כנרת": "Sea of Galilee",
+    "חיפה": "Haifa", "אילת": "Eilat", "הנגב": "Negev desert",
+    "הגליל": "Galilee", "הכרמל": "Carmel mountain", "הירדן": "Jordan River",
+    "ים המלח": "Dead Sea", "כנרת": "Sea of Galilee",
     "ים התיכון": "Mediterranean Sea", "ים סוף": "Red Sea",
-    "הר": "mountain", "הרים": "mountains", "מדבר": "desert",
-    "יער": "forest", "חוף": "beach", "נהר": "river", "אגם": "lake",
-    "עיר": "city", "כפר": "village", "שמיים": "sky",
-    "שקיעה": "sunset", "זריחה": "sunrise", "ענן": "cloud",
-    # סלעים ומינרלים
+    "הר": "mountain", "מדבר": "desert", "יער": "forest",
+    "חוף": "beach", "נהר": "river", "אגם": "lake",
+    "עיר": "city", "שמיים": "sky", "שקיעה": "sunset", "זריחה": "sunrise",
+    "סלע דולומיט": "dolomite rock", "דולומיט": "dolomite rock",
+    "אבן גיר": "limestone rock", "גיר": "limestone",
+    "בזלת": "basalt rock", "גרניט": "granite rock",
     "סלע": "rock", "אבן": "stone", "סלעים": "rocks",
-    "אבן גיר": "limestone", "גיר": "limestone",
-    "דולומיט": "dolomite", "בזלת": "basalt",
-    "גרניט": "granite", "חול": "sandstone", "חצץ": "gravel",
-    "מינרל": "mineral", "מינרלים": "minerals", "קריסטל": "crystal",
-    "רצפה": "rock floor", "מחשוף": "rock outcrop",
-    # בעלי חיים
+    "מינרל": "mineral", "קריסטל": "crystal",
     "דינוזאור": "dinosaur", "פיל": "elephant", "אריה": "lion",
-    "נמר": "leopard", "זאב": "wolf", "שועל": "fox",
-    "נשר": "eagle", "דג": "fish", "כריש": "shark",
-    # צמחים
+    "נשר": "eagle", "כריש": "shark",
     "עץ": "tree", "פרח": "flower", "ורד": "rose",
-    "דקל": "palm tree", "קקטוס": "cactus",
-    # כללי
     "שמש": "sun", "ירח": "moon", "כוכב": "star",
     "אש": "fire", "מים": "water", "קרח": "ice",
-    "של": "", "את": "", "לי": "", "אז": "",
 }
 
 def translate_to_english(text):
-    """מתרגם טקסט עברי לאנגלית לפי מילון"""
     result = text
     for heb, eng in HE_TO_EN.items():
         result = result.replace(heb, eng)
-    # ניקוי רווחים כפולים
     result = re.sub(r'\s+', ' ', result).strip()
-    # אם נשאר עברית — תרגם כ-generic
+    # אם נשאר עברית — הסר
     if re.search(r'[\u0590-\u05FF]', result):
-        result = re.sub(r'[\u0590-\u05FF\s]+', ' ', result).strip()
-        if not result:
-            result = "nature landscape"
+        result = re.sub(r'[\u0590-\u05FF]+', '', result)
+        result = re.sub(r'\s+', ' ', result).strip()
+    if not result:
+        result = "nature"
     return result
 
 def build_image_url(user_input):
@@ -141,13 +129,21 @@ def chat():
         data = response.json()
         if response.status_code == 200:
             reply = data['candidates'][0]['content']['parts'][0]['text']
-            try:
-                db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input or "תמונה", reply)
-            except: pass
-            return jsonify({"reply": reply, "image_url": image_url})
-        return jsonify({"reply": "שגיאת שרת גוגל."}), response.status_code
+        else:
+            # Gemini נכשל — נחזיר תמונה בכל זאת עם הודעה פשוטה
+            reply = "הנה התמונה שביקשת:" if wants_image else "שגיאת שרת גוגל."
+            print(f"[DEBUG] Gemini error {response.status_code}: {data}")
+
+        try:
+            db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input or "תמונה", reply)
+        except: pass
+
+        return jsonify({"reply": reply, "image_url": image_url})
+
     except Exception as e:
-        return jsonify({"reply": f"תקלה: {str(e)}"}), 500
+        # גם אם יש exception — נחזיר תמונה אם ביקשו
+        reply = "הנה התמונה שביקשת:" if wants_image else f"תקלה: {str(e)}"
+        return jsonify({"reply": reply, "image_url": image_url})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
