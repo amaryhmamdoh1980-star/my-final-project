@@ -50,7 +50,7 @@ def chat():
         return jsonify({"reply": "Empty message"}), 400
 
     # חזרה לגרסה היציבה ביותר שעובדת בטוח
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={API_KEY}"
     headers = {'Content-Type': 'application/json'}
     
     prompt_text = f"""
