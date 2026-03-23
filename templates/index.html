@@ -67,8 +67,7 @@
             <button class="btn-round" onclick="send()"><i class="fas fa-paper-plane"></i></button>
         </div>
     </div>
-code
-Code
+
 <script>
     let currentLang = 'he';
     let chatHistory = [];
@@ -123,42 +122,33 @@ Code
             typing.style.display = 'none';
             chatHistory.push({role: "user", text: text});
             chatHistory.push({role: "model", text: data.reply});
-            addBotMessage(data.reply);
+            
+            // שימוש בפונקציה המעודכנת שמקבלת גם URL של תמונה
+            addBotMessage(data.reply, data.image_url);
         } catch (e) { typing.style.display = 'none'; addBotMessage("Error."); }
     }
 
-    function addBotMessage(text) {
+    function addBotMessage(text, serverImageUrl = null) {
         const div = document.createElement('div');
         div.className = 'message bot';
         
         let cleanText = text;
-        let imageHTML = "";
-        const match = text.match(/\[IMAGE_KEYWORD:\s*(.*?)\]/i);
-        
-        if (match) {
-            const keyword = match[1].trim();
-            // שימוש בפורמט הקישור הכי אמין שיש ליצירת תמונות
-            const imgUrl = `https://pollinations.ai/p/${encodeURIComponent(keyword)}?width=1024&height=768&seed=42&nologo=true`;
-            
-            imageHTML = `
-                <div style="margin-top: 10px; position: relative; min-height: 200px; background: #f0f0f0; border-radius: 10px; overflow: hidden;">
-                    <img src="${imgUrl}" 
-                         style="width: 100%; display: block; border-radius: 10px;" 
-                         onload="this.parentElement.style.background='none'"
-                         onerror="this.src='https://loremflickr.com/800/600/${encodeURIComponent(keyword)}'">
-                </div>`;
-            
-            cleanText = text.replace(match[0], "");
-        }
+        let finalImageUrl = serverImageUrl;
 
         const contentDiv = document.createElement('div');
         contentDiv.innerHTML = marked.parse(cleanText);
         div.appendChild(contentDiv);
         
-        if (imageHTML) {
-            const container = document.createElement('div');
-            container.innerHTML = imageHTML;
-            div.appendChild(container);
+        if (finalImageUrl) {
+            const img = document.createElement('img');
+            img.src = finalImageUrl;
+            img.style.width = "100%";
+            img.style.borderRadius = "10px";
+            img.style.marginTop = "10px";
+            img.style.display = "block";
+            // אם התמונה נכשלת, נסה Flickr כגיבוי
+            img.onerror = function() { this.style.display='none'; };
+            div.appendChild(img);
         }
 
         const btn = document.createElement('button');
@@ -176,15 +166,9 @@ Code
         const clean = text.replace(/[*#`_]/g, "");
         const msg = new SpeechSynthesisUtterance(clean);
         
-        // זיהוי שפה
         const isHebrew = /[א-ת]/.test(clean);
         const isArabic = /[\u0600-\u06FF]/.test(clean);
         msg.lang = isHebrew ? 'he-IL' : (isArabic ? 'ar-SA' : 'en-US');
-
-        // הכרחת הטלפון למצוא קול מתאים
-        const voices = window.speechSynthesis.getVoices();
-        const targetVoice = voices.find(v => v.lang.startsWith(msg.lang.split('-')[0]));
-        if (targetVoice) msg.voice = targetVoice;
 
         msg.rate = 0.9;
         window.speechSynthesis.speak(msg);

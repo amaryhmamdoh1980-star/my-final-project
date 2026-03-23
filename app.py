@@ -2,6 +2,7 @@ import os
 import requests
 import base64
 import json
+import re
 from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
@@ -52,11 +53,13 @@ def chat():
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
     headers = {'Content-Type': 'application/json'}
     
+    # הנחיה מדויקת למודל להפקת מילות מפתח קצרות באנגלית
     prompt_text = f"""
     אתה 'המורה החכם' - פרופסור ומדען מומחה.
-    חוק תמונות: אם המשתמש מבקש לראות מפה, תופעה או אובייקט - סיים את התשובה בפורמט הבא:
-    [IMAGE_KEYWORD: description]
-    השתמש בתיאור קצר ומדויק באנגלית (עד 5 מילים).
+    ענה תמיד ברמה אקדמית גבוהה.
+    חוק תמונות: אם המשתמש מבקש לראות מפה, סרטוט, סלע או אובייקט - סיים את התשובה בשורה הבאה בדיוק:
+    [IMAGE_KEYWORD: short_description]
+    חשוב: השתמש ב-3 עד 5 מילים באנגלית בלבד. בלי תווים מיוחדים.
 
     השאלה הנוכחית: {user_input}
     """
@@ -67,6 +70,7 @@ def chat():
         contents.append({"role": role, "parts": [{"text": msg['text']}]})
 
     current_parts = [{"text": prompt_text}]
+    
     if image_file:
         try:
             img_data = base64.b64encode(image_file.read()).decode('utf-8')
@@ -81,10 +85,23 @@ def chat():
         data = response.json()
         if response.status_code == 200:
             reply = data['candidates'][0]['content']['parts'][0]['text']
+            
+            # בדיקה אם קיימת תגית תמונה בטקסט
+            image_url = None
+            match = re.search(r"\[IMAGE_KEYWORD:\s*(.*?)\]", reply, re.IGNORECASE)
+            if match:
+                keyword = match.group(1).strip()
+                # ניקוי מילות המפתח מתווים שבורים
+                safe_keyword = re.sub(r'[^\w\s]', '', keyword)
+                image_url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(safe_keyword)}?width=1024&height=768&nologo=true"
+                # הסרת התגית מהטקסט שיוצג למשתמש
+                reply = re.sub(r"\[IMAGE_KEYWORD:.*?\]", "", reply).strip()
+
             try:
                 db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input or "תמונה", reply)
             except: pass
-            return jsonify({"reply": reply})
+            
+            return jsonify({"reply": reply, "image_url": image_url})
         return jsonify({"reply": "שגיאת שרת גוגל."}), response.status_code
     except Exception as e:
         return jsonify({"reply": f"תקלה: {str(e)}"}), 500
