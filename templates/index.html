@@ -129,45 +129,49 @@
     }
 
     function addBotMessage(text, serverImageUrl = null) {
-        const div = document.createElement('div');
-        div.className = 'message bot';
-        
-        let cleanText = text;
-        let finalImageUrl = serverImageUrl;
+    const div = document.createElement('div');
+    div.className = 'message bot';
+    
+    let cleanText = text;
+    let imageHTML = "";
 
-        // בדיקה אם יש תגית תמונה בטקסט (ליתר ביטחון)
-        const match = text.match(/\[IMAGE_KEYWORD:\s*(.*?)\]/i);
-        if (match) {
-            if (!finalImageUrl) {
-                const keyword = match[1].trim();
-                // שימוש במודל FLUX ליצירת מפות ושרטוטים באיכות גבוהה
-                finalImageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(keyword)}?width=1024&height=1024&model=flux`;
-            }
-            // הסרת התגית מהטקסט שמוצג למשתמש
-            cleanText = text.replace(match[0], "").trim();
-        }
-
-        const contentDiv = document.createElement('div');
-        contentDiv.innerHTML = marked.parse(cleanText);
-        div.appendChild(contentDiv);
-
-        if (finalImageUrl) {
-            const img = document.createElement('img');
-            img.src = finalImageUrl;
-            img.style.cursor = "pointer";
-            img.onclick = () => window.open(finalImageUrl, '_blank');
-            div.appendChild(img);
-        }
-
-        const btn = document.createElement('button');
-        btn.className = 'icon-only'; btn.innerHTML = '<i class="fas fa-volume-up"></i>';
-        btn.style.marginTop = "8px";
-        btn.onclick = () => handleVoice(btn, cleanText);
-        div.appendChild(btn);
-
-        win.insertBefore(div, typing);
-        win.scrollTop = win.scrollHeight;
+    // 1. נבדוק אם קיבלנו URL מוכן מהשרת
+    if (serverImageUrl) {
+        imageHTML = `<img src="${serverImageUrl}" alt="Map/Illustration" style="width:100%; border-radius:10px; margin-top:10px; cursor:pointer;" onclick="window.open('${serverImageUrl}', '_blank')">`;
     }
+
+    // 2. ננקה את ה-Tag מהטקסט של גוגל
+    const match = text.match(/\[IMAGE_KEYWORD:\s*(.*?)\]/i);
+    if (match) {
+        cleanText = text.replace(match[0], "").trim();
+        // אם השרת לא שלח URL (למשל בהיסטוריה), ניצור אותו כאן
+        if (!imageHTML) {
+            const kw = encodeURIComponent(match[1].trim());
+            const imgUrl = `https://pollinations.ai/p/${kw}?width=1024&height=1024&nologo=true`;
+            imageHTML = `<img src="${imgUrl}" style="width:100%; border-radius:10px; margin-top:10px;">`;
+        }
+    }
+
+    const contentDiv = document.createElement('div');
+    contentDiv.innerHTML = marked.parse(cleanText);
+    div.appendChild(contentDiv);
+
+    // 3. הוספת התמונה לגוף ההודעה
+    if (imageHTML) {
+        const container = document.createElement('div');
+        container.innerHTML = imageHTML;
+        div.appendChild(container);
+    }
+
+    const btn = document.createElement('button');
+    btn.className = 'icon-only'; btn.innerHTML = '<i class="fas fa-volume-up"></i>';
+    btn.style.marginTop = "8px";
+    btn.onclick = () => handleVoice(btn, cleanText);
+    div.appendChild(btn);
+
+    win.insertBefore(div, typing);
+    win.scrollTop = win.scrollHeight;
+}
 
     function handleVoice(btn, text) {
         if (window.speechSynthesis.speaking) { window.speechSynthesis.cancel(); return; }

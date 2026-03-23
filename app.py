@@ -49,17 +49,21 @@ def chat():
     if not user_input and not image_file:
         return jsonify({"reply": "Empty message"}), 400
 
-    # חזרה לגרסה היציבה ביותר שעובדת בטוח
+    # ה-URL שביקשת שעובד לך
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
-
     headers = {'Content-Type': 'application/json'}
     
+    # הנחיה משופרת כדי למנוע ממנו לסרב לצייר מפות
     prompt_text = f"""
-    אתה 'המורה החכם' - פרופסור ומדען.
-    ענה ברמה אקדמית גבוהה.
-    אם המשתמש מבקש לראות מפה או תמונה, סיים את התשובה בפורמט: [IMAGE_KEYWORD: English description]
+    אתה 'המורה החכם' - פרופסור ומדען מומחה. 
+    יש לך כלי מיוחד ליצירת תמונות ומפות. 
+    כדי להשתמש בו, אתה **חייב** לסיים את התשובה שלך בשורה בפורמט הזה:
+    [IMAGE_KEYWORD: detailed description in english]
     
-    השאלה: {user_input}
+    למשל, אם ביקשו מפה של המנדט הבריטי, אל תגיד שאתה לא יכול! פשוט כתוב:
+    [IMAGE_KEYWORD: map of the British Mandate for Palestine 1920-1948, detailed, historical, 4k]
+
+    השאלה הנוכחית: {user_input}
     """
 
     contents = []
@@ -81,29 +85,28 @@ def chat():
     try:
         response = requests.post(url, json=payload, headers=headers)
         data = response.json()
-        
         if response.status_code == 200:
             reply = data['candidates'][0]['content']['parts'][0]['text']
             
-            # לוגיקה פשוטה לתמונה
+            # חילוץ ה-URL לתמונה במידה וקיים ה-Tag
             image_url = None
             if "[IMAGE_KEYWORD:" in reply:
-                keyword = reply.split("[IMAGE_KEYWORD:")[1].split("]")[0].strip()
-                reply = reply.split("[IMAGE_KEYWORD:")[0].strip()
-                image_url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(keyword)}?width=1024&height=1024&model=flux"
+                try:
+                    kw = reply.split("[IMAGE_KEYWORD:")[1].split("]")[0].strip()
+                    # שימוש במקור חזק יותר שלא נותן "Too many requests"
+                    image_url = f"https://pollinations.ai/p/{requests.utils.quote(kw)}?width=1024&height=1024&nologo=true"
+                except: pass
 
             try:
                 db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input or "תמונה", reply)
             except: pass
             
+            # החזרת התשובה כולל ה-image_url
             return jsonify({"reply": reply, "image_url": image_url})
         
-        # שינוי קריטי: אם יש שגיאה, נחזיר את ההודעה המקורית מגוגל כדי שנבין למה!
-        error_info = data.get('error', {}).get('message', 'Unknown Google Error')
-        return jsonify({"reply": f"שגיאת גוגל: {error_info}"}), response.status_code
-
+        return jsonify({"reply": "שגיאת שרת גוגל."}), response.status_code
     except Exception as e:
-        return jsonify({"reply": f"תקלה בשרת: {str(e)}"}), 500
+        return jsonify({"reply": f"תקלה: {str(e)}"}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
