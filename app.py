@@ -3,6 +3,7 @@ import requests
 import base64
 import json
 import re
+import hashlib
 from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
@@ -72,9 +73,7 @@ def translate_to_english(text):
     return result.strip() or "nature"
 
 def get_wikipedia_image(query):
-    """מחפש תמונה ב-Wikipedia לפי נושא"""
     try:
-        # שלב 1: חיפוש ערך ב-Wikipedia
         search_url = "https://en.wikipedia.org/w/api.php"
         search_params = {
             "action": "query",
@@ -85,12 +84,10 @@ def get_wikipedia_image(query):
         }
         search_res = requests.get(search_url, params=search_params, timeout=6,
                                   headers={"User-Agent": "SmartTeacher/1.0"})
-        search_data = search_res.json()
-        results = search_data.get("query", {}).get("search", [])
+        results = search_res.json().get("query", {}).get("search", [])
         if not results:
             return None
 
-        # שלב 2: קבל תמונה ראשית של הערך
         page_title = results[0]["title"]
         image_params = {
             "action": "query",
@@ -101,13 +98,11 @@ def get_wikipedia_image(query):
         }
         img_res = requests.get(search_url, params=image_params, timeout=6,
                                headers={"User-Agent": "SmartTeacher/1.0"})
-        img_data = img_res.json()
-        pages = img_data.get("query", {}).get("pages", {})
+        pages = img_res.json().get("query", {}).get("pages", {})
         for page in pages.values():
-            thumbnail = page.get("thumbnail", {})
-            img_url = thumbnail.get("source", "")
+            img_url = page.get("thumbnail", {}).get("source", "")
             if img_url:
-                print(f"[DEBUG] Wikipedia image for '{query}': {img_url}")
+                print(f"[DEBUG] Wikipedia image: {img_url}")
                 return img_url
     except Exception as e:
         print(f"[DEBUG] Wikipedia error: {e}")
@@ -119,8 +114,6 @@ def build_image_url(user_input):
     img_url = get_wikipedia_image(english_query)
     if img_url:
         return img_url
-    # גיבוי: Lorem Picsum (תמיד עובד, תמונות טבע/נוף)
-    import hashlib
     seed = int(hashlib.md5(english_query.encode()).hexdigest()[:8], 16) % 1000
     return f"https://picsum.photos/seed/{seed}/1024/768"
 
@@ -148,11 +141,15 @@ def chat():
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
     headers = {'Content-Type': 'application/json'}
 
-    prompt_text = f"""
-    אתה 'המורה החכם' - פרופסור ומדען מומחה.
-    ענה תמיד ברמה אקדמית גבוהה.
-    השאלה הנוכחית: {user_input}
-    """
+    # prompt שונה כשמבקשים תמונה
+    if wants_image:
+        prompt_text = f"""אתה 'המורה החכם' - פרופסור ומדען מומחה. ענה תמיד ברמה אקדמית גבוהה.
+המשתמש ביקש תמונה/מפה של נושא מסוים. המערכת כבר מטפלת בהצגת התמונה באופן אוטומטי.
+תפקידך: ספק תיאור אקדמי מעניין ומפורט של הנושא בלבד. אל תזכיר שאינך יכול להציג תמונות.
+השאלה: {user_input}"""
+    else:
+        prompt_text = f"""אתה 'המורה החכם' - פרופסור ומדען מומחה. ענה תמיד ברמה אקדמית גבוהה.
+השאלה: {user_input}"""
 
     contents = []
     for msg in history:
@@ -175,7 +172,6 @@ def chat():
             reply = data['candidates'][0]['content']['parts'][0]['text']
         else:
             reply = "הנה התמונה שביקשת:" if wants_image else "שגיאת שרת גוגל."
-            print(f"[DEBUG] Gemini error {response.status_code}: {data}")
         try:
             db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input or "תמונה", reply)
         except: pass
