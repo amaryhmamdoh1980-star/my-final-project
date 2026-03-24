@@ -55,13 +55,27 @@ HE_TO_EN = {
     "אבן גיר": "limestone rock", "גיר": "limestone",
     "בזלת": "basalt rock", "גרניט": "granite rock",
     "סלע": "rock", "אבן": "stone", "מינרל": "mineral",
-    "קריסטל": "crystal quartz", "זהב": "gold mineral",
-    "כסף": "silver mineral", "נחושת": "copper mineral",
+    "קריסטל": "crystal quartz", "זהב": "gold",
+    "כסף": "silver", "נחושת": "copper",
     "דינוזאור": "dinosaur", "פיל": "elephant",
     "אריה": "lion", "נשר": "eagle", "כריש": "shark",
     "עץ": "tree", "פרח": "flower", "ורד": "rose",
     "שמש": "sun", "ירח": "moon", "אש": "fire",
+    "צרפת": "France", "גרמניה": "Germany", "ספרד": "Spain",
+    "איטליה": "Italy", "יוון": "Greece", "מצרים": "Egypt",
+    "ירדן": "Jordan", "סוריה": "Syria", "לבנון": "Lebanon",
+    "ארצות הברית": "United States", "אמריקה": "America",
+    "רוסיה": "Russia", "סין": "China", "יפן": "Japan",
+    "הודו": "India", "ברזיל": "Brazil", "אוסטרליה": "Australia",
+    "קנדה": "Canada", "בריטניה": "United Kingdom", "טורקיה": "Turkey",
 }
+
+# מילות סינון — תמונות שלא רוצים
+BAD_IMAGE_KEYWORDS = [
+    "globe", "locator", "orthographic", "location_map",
+    "flag", "coat_of_arms", "emblem", "seal", "banner",
+    "Flag_of", "Coat_of_arms", "Globe", "Locator"
+]
 
 def translate_to_english(text):
     result = text
@@ -73,38 +87,120 @@ def translate_to_english(text):
         result = re.sub(r'\s+', ' ', result).strip()
     return result.strip() or "nature"
 
-def get_wikipedia_image(query):
+def is_bad_image(url):
+    """בודק אם התמונה היא גלובוס/דגל שלא רוצים"""
+    return any(bad in url for bad in BAD_IMAGE_KEYWORDS)
+
+def get_page_images(page_title, is_map=False):
+    """מחזיר את כל התמונות של ערך Wikipedia ובוחר את הטובה ביותר"""
     try:
-        search_url = "https://en.wikipedia.org/w/api.php"
+        api_url = "https://en.wikipedia.org/w/api.php"
+        params = {
+            "action": "query",
+            "titles": page_title,
+            "prop": "images",
+            "imlimit": 20,
+            "format": "json"
+        }
+        res = requests.get(api_url, params=params, timeout=6,
+                           headers={"User-Agent": "SmartTeacher/1.0"})
+        pages = res.json().get("query", {}).get("pages", {})
+
+        image_titles = []
+        for page in pages.values():
+            for img in page.get("images", []):
+                title = img.get("title", "")
+                if any(ext in title.lower() for ext in [".jpg", ".jpeg", ".png"]):
+                    image_titles.append(title)
+
+        # סינון ובחירה
+        map_keywords = ["map", "topograph", "relief", "terrain", "geographic"]
+        preferred = []
+        fallback = []
+
+        for title in image_titles:
+            t_lower = title.lower()
+            if is_bad_image(title):
+                continue
+            if is_map and any(k in t_lower for k in map_keywords):
+                preferred.append(title)
+            else:
+                fallback.append(title)
+
+        candidates = preferred if preferred else fallback
+        if not candidates:
+            return None
+
+        # קבל URL של התמונה הראשונה המתאימה
+        for img_title in candidates[:5]:
+            url_params = {
+                "action": "query",
+                "titles": img_title,
+                "prop": "imageinfo",
+                "iiprop": "url",
+                "iiurlwidth": 1000,
+                "format": "json"
+            }
+            url_res = requests.get(api_url, params=url_params, timeout=6,
+                                   headers={"User-Agent": "SmartTeacher/1.0"})
+            url_pages = url_res.json().get("query", {}).get("pages", {})
+            for p in url_pages.values():
+                info = p.get("imageinfo", [])
+                if info:
+                    img_url = info[0].get("thumburl") or info[0].get("url", "")
+                    if img_url and not is_bad_image(img_url):
+                        print(f"[DEBUG] Selected image: {img_url}")
+                        return img_url
+    except Exception as e:
+        print(f"[DEBUG] get_page_images error: {e}")
+    return None
+
+def get_wikipedia_image(query, is_map=False):
+    try:
+        api_url = "https://en.wikipedia.org/w/api.php"
+
+        # חיפוש ערך מתאים
+        search_query = query + " map" if is_map else query
         search_params = {
             "action": "query",
             "list": "search",
-            "srsearch": query,
-            "srlimit": 3,
+            "srsearch": search_query,
+            "srlimit": 5,
             "format": "json"
         }
-        search_res = requests.get(search_url, params=search_params, timeout=6,
+        search_res = requests.get(api_url, params=search_params, timeout=6,
                                   headers={"User-Agent": "SmartTeacher/1.0"})
         results = search_res.json().get("query", {}).get("search", [])
         if not results:
             return None
 
-        page_title = results[0]["title"]
-        image_params = {
-            "action": "query",
-            "titles": page_title,
-            "prop": "pageimages",
-            "pithumbsize": 1000,
-            "format": "json"
-        }
-        img_res = requests.get(search_url, params=image_params, timeout=6,
-                               headers={"User-Agent": "SmartTeacher/1.0"})
-        pages = img_res.json().get("query", {}).get("pages", {})
-        for page in pages.values():
-            img_url = page.get("thumbnail", {}).get("source", "")
+        # נסה עד 3 ערכים
+        for result in results[:3]:
+            page_title = result["title"]
+            print(f"[DEBUG] Trying Wikipedia page: {page_title}")
+
+            # נסה קודם thumbnail ישיר
+            thumb_params = {
+                "action": "query",
+                "titles": page_title,
+                "prop": "pageimages",
+                "pithumbsize": 1000,
+                "format": "json"
+            }
+            thumb_res = requests.get(api_url, params=thumb_params, timeout=6,
+                                     headers={"User-Agent": "SmartTeacher/1.0"})
+            thumb_pages = thumb_res.json().get("query", {}).get("pages", {})
+            for p in thumb_pages.values():
+                img_url = p.get("thumbnail", {}).get("source", "")
+                if img_url and not is_bad_image(img_url):
+                    print(f"[DEBUG] Thumbnail OK: {img_url}")
+                    return img_url
+
+            # אם thumbnail רע — חפש בכל תמונות הדף
+            img_url = get_page_images(page_title, is_map=is_map)
             if img_url:
-                print(f"[DEBUG] Wikipedia image: {img_url}")
                 return img_url
+
     except Exception as e:
         print(f"[DEBUG] Wikipedia error: {e}")
     return None
@@ -112,15 +208,13 @@ def get_wikipedia_image(query):
 def build_image_url(user_input):
     is_map = any(word in user_input for word in MAP_WORDS)
     english_query = translate_to_english(user_input)
+    print(f"[DEBUG] translated: '{user_input}' → '{english_query}' (map={is_map})")
 
-    # מפה — הוסף "map" לחיפוש כדי לקבל מפה ולא דגל
-    if is_map:
-        english_query = english_query + " map geography"
-
-    print(f"[DEBUG] translated: '{user_input}' → '{english_query}'")
-    img_url = get_wikipedia_image(english_query)
+    img_url = get_wikipedia_image(english_query, is_map=is_map)
     if img_url:
         return img_url
+
+    # גיבוי: Picsum
     seed = int(hashlib.md5(english_query.encode()).hexdigest()[:8], 16) % 1000
     return f"https://picsum.photos/seed/{seed}/1024/768"
 
