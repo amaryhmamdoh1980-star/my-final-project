@@ -32,13 +32,14 @@ class DB:
 db = DB()
 API_KEY = os.environ.get("GOOGLE_API_KEY")
 
-IMAGE_WORDS = ["מפה", "מפת", "צייר", "תמונה", "תראה לי", "תצלום", "איור"]
+MAP_WORDS   = ["מפה", "מפת"]
+IMAGE_WORDS = ["צייר", "תמונה", "תראה לי", "תצלום", "איור"]
 
 HE_TO_EN = {
     "תראה לי את": "", "תראה לי": "",
     "צייר לי": "", "צייר": "",
     "תמונה של": "", "תמונה": "",
-    "מפה של": "map", "מפת": "map", "מפה": "map",
+    "מפה של": "", "מפת": "", "מפה": "",
     "תצלום של": "", "תצלום": "",
     "איור של": "", "איור": "",
     "של": "", "את": "", "לי": "", "אז": "",
@@ -109,7 +110,13 @@ def get_wikipedia_image(query):
     return None
 
 def build_image_url(user_input):
+    is_map = any(word in user_input for word in MAP_WORDS)
     english_query = translate_to_english(user_input)
+
+    # מפה — הוסף "map" לחיפוש כדי לקבל מפה ולא דגל
+    if is_map:
+        english_query = english_query + " map geography"
+
     print(f"[DEBUG] translated: '{user_input}' → '{english_query}'")
     img_url = get_wikipedia_image(english_query)
     if img_url:
@@ -135,17 +142,16 @@ def chat():
     if not user_input and not image_file:
         return jsonify({"reply": "Empty message"}), 400
 
-    wants_image = any(word in user_input for word in IMAGE_WORDS)
-    image_url = build_image_url(user_input) if wants_image else None
+    wants_visual = any(word in user_input for word in MAP_WORDS + IMAGE_WORDS)
+    image_url = build_image_url(user_input) if wants_visual else None
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
     headers = {'Content-Type': 'application/json'}
 
-    # prompt שונה כשמבקשים תמונה
-    if wants_image:
+    if wants_visual:
         prompt_text = f"""אתה 'המורה החכם' - פרופסור ומדען מומחה. ענה תמיד ברמה אקדמית גבוהה.
-המשתמש ביקש תמונה/מפה של נושא מסוים. המערכת כבר מטפלת בהצגת התמונה באופן אוטומטי.
-תפקידך: ספק תיאור אקדמי מעניין ומפורט של הנושא בלבד. אל תזכיר שאינך יכול להציג תמונות.
+המשתמש ביקש תמונה/מפה — המערכת כבר מטפלת בהצגתה אוטומטית.
+תפקידך: ספק תיאור אקדמי מפורט ומעניין של הנושא. אל תזכיר שאינך יכול להציג תמונות.
 השאלה: {user_input}"""
     else:
         prompt_text = f"""אתה 'המורה החכם' - פרופסור ומדען מומחה. ענה תמיד ברמה אקדמית גבוהה.
@@ -171,13 +177,13 @@ def chat():
         if response.status_code == 200:
             reply = data['candidates'][0]['content']['parts'][0]['text']
         else:
-            reply = "הנה התמונה שביקשת:" if wants_image else "שגיאת שרת גוגל."
+            reply = "הנה התמונה שביקשת:" if wants_visual else "שגיאת שרת גוגל."
         try:
             db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input or "תמונה", reply)
         except: pass
         return jsonify({"reply": reply, "image_url": image_url})
     except Exception as e:
-        reply = "הנה התמונה שביקשת:" if wants_image else f"תקלה: {str(e)}"
+        reply = "הנה התמונה שביקשת:" if wants_visual else f"תקלה: {str(e)}"
         return jsonify({"reply": reply, "image_url": image_url})
 
 if __name__ == "__main__":
