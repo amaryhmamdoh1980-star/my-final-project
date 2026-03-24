@@ -32,6 +32,9 @@
         #user-input { flex: 1; padding: 12px; border-radius: 25px; border: 1px solid white; outline: none; font-size: 16px; }
         .btn-round { background: var(--primary); color: white; border: none; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .icon-only { background: none; border: none; font-size: 22px; color: #54656f; cursor: pointer; }
+        .message-content h1,.message-content h2,.message-content h3 { margin: 8px 0 4px; }
+        .message-content ul,.message-content ol { padding-right: 20px; }
+        .message-content p { margin: 4px 0; }
     </style>
 </head>
 <body class="rtl" id="app-body">
@@ -92,6 +95,16 @@
         }
     }
 
+    function cleanText(text) {
+        // אם הטקסט מכיל תגיות HTML גולמיות — הסר אותן והמר ל-markdown
+        if (/<[a-z][\s\S]*>/i.test(text)) {
+            const tmp = document.createElement('div');
+            tmp.innerHTML = text;
+            return tmp.innerText;
+        }
+        return text;
+    }
+
     async function send() {
         const input = document.getElementById('user-input');
         const text = input.value.trim();
@@ -122,7 +135,6 @@
             typing.style.display = 'none';
             chatHistory.push({role: "user", text: text});
             chatHistory.push({role: "model", text: data.reply});
-            // *** השינוי: מעבירים image_url מהשרת ***
             addBotMessage(data.reply, data.image_url);
         } catch (e) { typing.style.display = 'none'; addBotMessage("Error."); }
     }
@@ -131,19 +143,35 @@
         const div = document.createElement('div');
         div.className = 'message bot';
 
+        // ניקוי טקסט — אם Gemini החזיר HTML גולמי
+        const cleanedText = cleanText(text);
+
         const contentDiv = document.createElement('div');
-        contentDiv.innerHTML = marked.parse(text);
+        contentDiv.className = 'message-content';
+        contentDiv.innerHTML = marked.parse(cleanedText);
         div.appendChild(contentDiv);
 
-        // *** הצגת תמונה אם התקבלה מהשרת ***
         if (imageUrl) {
             const imgContainer = document.createElement('div');
-            imgContainer.style.cssText = "margin-top:10px; position:relative; min-height:200px; background:#f0f0f0; border-radius:10px; overflow:hidden;";
+            imgContainer.style.cssText = "margin-top:10px; position:relative; min-height:150px; background:#f0f0f0; border-radius:10px; overflow:hidden; text-align:center;";
+            
+            const loadingText = document.createElement('div');
+            loadingText.style.cssText = "position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#888; font-size:14px;";
+            loadingText.innerText = "טוען תמונה...";
+            imgContainer.appendChild(loadingText);
+
             const img = document.createElement('img');
             img.src = imageUrl;
-            img.style.cssText = "width:100%; display:block; border-radius:10px;";
-            img.onload = function() { imgContainer.style.background = 'none'; };
-            img.onerror = function() { imgContainer.style.display = 'none'; };
+            img.style.cssText = "width:100%; display:none; border-radius:10px;";
+            img.onload = function() {
+                loadingText.style.display = 'none';
+                imgContainer.style.background = 'none';
+                imgContainer.style.minHeight = '0';
+                this.style.display = 'block';
+            };
+            img.onerror = function() {
+                imgContainer.style.display = 'none';
+            };
             imgContainer.appendChild(img);
             div.appendChild(imgContainer);
         }
@@ -151,7 +179,7 @@
         const btn = document.createElement('button');
         btn.className = 'icon-only'; btn.innerHTML = '<i class="fas fa-volume-up"></i>';
         btn.style.marginTop = "8px";
-        btn.onclick = () => handleVoice(btn, text);
+        btn.onclick = () => handleVoice(btn, cleanedText);
         div.appendChild(btn);
 
         win.insertBefore(div, typing);
