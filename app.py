@@ -189,6 +189,19 @@ def build_image_url(user_input):
     seed = int(hashlib.md5(english_query.encode()).hexdigest()[:8], 16) % 1000
     return f"https://picsum.photos/seed/{seed}/1024/768"
 
+SYSTEM_PROMPT = """אתה 'המורה החכם' — מורה ומדען מנוסה ומומחה.
+
+כללי סגנון תשובה:
+1. התאם את פתיחת התשובה לשאלה — אל תפתח תמיד באותו משפט קבוע.
+   - "מה רואים בתמונה?" → התחל ב"בתמונה רואים..."
+   - "מה זה X?" → התחל ב"X הוא..."
+   - "למה...?" → התחל ב"הסיבה היא..."
+   - "איך...?" → התחל ב"כדי ל..." או "התהליך..."
+   - שאלות קצרות בשיחה רצופה → ענה ישירות ללא מבוא
+2. אל תפתח אף פעם במשפטים כמו: "כפרופסור...", "אציג ניתוח...", "בתור מומחה..."
+3. ענה בצורה מנומסת, ברורה וברמה אקדמית מתאימה לשאלה.
+4. בשיחה רצופה עם מספר שאלות — ענה ישירות וקצר יותר, ללא חזרה על הקדמות."""
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -217,7 +230,6 @@ def chat():
 
     has_uploaded_file = (image_file and image_file.filename) or (doc_file and doc_file.filename)
 
-    # תמונה רק כשמבקשים במפורש — ולא כשמעלים קובץ לניתוח
     wants_visual = (
         not has_uploaded_file and
         any(word in user_input for word in MAP_WORDS + IMAGE_WORDS)
@@ -228,21 +240,28 @@ def chat():
     headers = {'Content-Type': 'application/json'}
 
     if doc_text:
-        prompt_text = f"""אתה 'המורה החכם' - פרופסור ומדען מומחה. ענה תמיד ברמה אקדמית גבוהה.
-המשתמש העלה קובץ {doc_type} עם התוכן הבא:
+        user_question = user_input if user_input else "סכם את הקובץ בצורה מפורטת"
+        prompt_text = f"""{SYSTEM_PROMPT}
+
+המשתמש העלה קובץ {doc_type}. ענה על שאלתו על סמך תוכן הקובץ בלבד.
+
+תוכן הקובץ:
 ---
 {doc_text}
 ---
-שאלת המשתמש: {user_input if user_input else 'סכם את הקובץ בצורה מפורטת ומקצועית'}
-ענה בצורה מקיפה ומדויקת על סמך תוכן הקובץ."""
+
+שאלה: {user_question}"""
     elif wants_visual:
-        prompt_text = f"""אתה 'המורה החכם' - פרופסור ומדען מומחה. ענה תמיד ברמה אקדמית גבוהה.
-המשתמש ביקש תמונה/מפה — המערכת כבר מציגה אותה אוטומטית.
-תפקידך: ספק תיאור אקדמי מפורט של הנושא. אל תזכיר שאינך יכול להציג תמונות.
-השאלה: {user_input}"""
+        prompt_text = f"""{SYSTEM_PROMPT}
+
+המשתמש ביקש תמונה/מפה — המערכת מציגה אותה אוטומטית.
+תפקידך: תאר את הנושא בהתאם לשאלה. אל תזכיר שאינך יכול להציג תמונות.
+
+שאלה: {user_input}"""
     else:
-        prompt_text = f"""אתה 'המורה החכם' - פרופסור ומדען מומחה. ענה תמיד ברמה אקדמית גבוהה.
-השאלה: {user_input}"""
+        prompt_text = f"""{SYSTEM_PROMPT}
+
+שאלה: {user_input}"""
 
     contents = []
     for msg in history:
