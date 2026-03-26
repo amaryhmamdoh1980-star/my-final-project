@@ -4,6 +4,7 @@ import base64
 import json
 import re
 import hashlib
+import io
 from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
@@ -13,6 +14,7 @@ app = Flask(__name__)
 DB_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres.yimsexytrswzamnslgcd:MaAm%40036355972@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres')
 app.config['SQLALCHEMY_DATABASE_URI'] = DB_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024  # 20MB max
 db_obj = SQLAlchemy(app)
 
 class DB:
@@ -64,18 +66,68 @@ HE_TO_EN = {
     "צרפת": "France", "גרמניה": "Germany", "ספרד": "Spain",
     "איטליה": "Italy", "יוון": "Greece", "מצרים": "Egypt",
     "ירדן": "Jordan", "סוריה": "Syria", "לבנון": "Lebanon",
-    "ארצות הברית": "United States", "אמריקה": "America",
+    "ארצות הברית": "United States", "אמריקה": "United States",
     "רוסיה": "Russia", "סין": "China", "יפן": "Japan",
     "הודו": "India", "ברזיל": "Brazil", "אוסטרליה": "Australia",
     "קנדה": "Canada", "בריטניה": "United Kingdom", "טורקיה": "Turkey",
 }
 
-# מילות סינון — תמונות שלא רוצים
-BAD_IMAGE_KEYWORDS = [
-    "globe", "locator", "orthographic", "location_map",
-    "flag", "coat_of_arms", "emblem", "seal", "banner",
-    "Flag_of", "Coat_of_arms", "Globe", "Locator"
-]
+BAD_KEYWORDS = ["globe", "locator", "orthographic", "Flag_of", "Coat_of",
+                 "emblem", "seal", "banner", "logo", "icon", "portrait",
+                 "newspaper", "magazine", "article", "stamp"]
+
+# ===== חילוץ טקסט מקבצים =====
+
+def extract_text_from_pdf(file_bytes):
+    try:
+        import fitz  # PyMuPDF
+        doc = fitz.open(stream=file_bytes, filetype="pdf")
+        text = ""
+        for page in doc:
+            text += page.get_text()
+        return text[:8000]  # מגביל ל-8000 תווים
+    except Exception as e:
+        return f"[שגיאה בקריאת PDF: {e}]"
+
+def extract_text_from_docx(file_bytes):
+    try:
+        from docx import Document
+        doc = Document(io.BytesIO(file_bytes))
+        text = "\n".join([para.text for para in doc.paragraphs if para.text.strip()])
+        return text[:8000]
+    except Exception as e:
+        return f"[שגיאה בקריאת Word: {e}]"
+
+def extract_text_from_xlsx(file_bytes):
+    try:
+        import openpyxl
+        wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
+        text = ""
+        for sheet in wb.sheetnames:
+            ws = wb[sheet]
+            text += f"\n--- גיליון: {sheet} ---\n"
+            for row in ws.iter_rows(values_only=True):
+                row_text = " | ".join([str(c) for c in row if c is not None])
+                if row_text.strip():
+                    text += row_text + "\n"
+        return text[:8000]
+    except Exception as e:
+        return f"[שגיאה בקריאת Excel: {e}]"
+
+def extract_text_from_file(file_bytes, filename, mimetype):
+    fname = filename.lower()
+    if fname.endswith(".pdf") or "pdf" in mimetype:
+        return extract_text_from_pdf(file_bytes), "PDF"
+    elif fname.endswith(".docx") or "word" in mimetype or "docx" in mimetype:
+        return extract_text_from_docx(file_bytes), "Word"
+    elif fname.endswith(".xlsx") or "excel" in mimetype or "spreadsheet" in mimetype:
+        return extract_text_from_xlsx(file_bytes), "Excel"
+    elif fname.endswith(".txt") or "text/plain" in mimetype:
+        return file_bytes.decode("utf-8", errors="ignore")[:8000], "טקסט"
+    else:
+        return None, None
+
+# ===== תמונות =====
 
 def translate_to_english(text):
     result = text
@@ -88,119 +140,51 @@ def translate_to_english(text):
     return result.strip() or "nature"
 
 def is_bad_image(url):
-    """בודק אם התמונה היא גלובוס/דגל שלא רוצים"""
-    return any(bad in url for bad in BAD_IMAGE_KEYWORDS)
-
-def get_page_images(page_title, is_map=False):
-    """מחזיר את כל התמונות של ערך Wikipedia ובוחר את הטובה ביותר"""
-    try:
-        api_url = "https://en.wikipedia.org/w/api.php"
-        params = {
-            "action": "query",
-            "titles": page_title,
-            "prop": "images",
-            "imlimit": 20,
-            "format": "json"
-        }
-        res = requests.get(api_url, params=params, timeout=6,
-                           headers={"User-Agent": "SmartTeacher/1.0"})
-        pages = res.json().get("query", {}).get("pages", {})
-
-        image_titles = []
-        for page in pages.values():
-            for img in page.get("images", []):
-                title = img.get("title", "")
-                if any(ext in title.lower() for ext in [".jpg", ".jpeg", ".png"]):
-                    image_titles.append(title)
-
-        # סינון ובחירה
-        map_keywords = ["map", "topograph", "relief", "terrain", "geographic"]
-        preferred = []
-        fallback = []
-
-        for title in image_titles:
-            t_lower = title.lower()
-            if is_bad_image(title):
-                continue
-            if is_map and any(k in t_lower for k in map_keywords):
-                preferred.append(title)
-            else:
-                fallback.append(title)
-
-        candidates = preferred if preferred else fallback
-        if not candidates:
-            return None
-
-        # קבל URL של התמונה הראשונה המתאימה
-        for img_title in candidates[:5]:
-            url_params = {
-                "action": "query",
-                "titles": img_title,
-                "prop": "imageinfo",
-                "iiprop": "url",
-                "iiurlwidth": 1000,
-                "format": "json"
-            }
-            url_res = requests.get(api_url, params=url_params, timeout=6,
-                                   headers={"User-Agent": "SmartTeacher/1.0"})
-            url_pages = url_res.json().get("query", {}).get("pages", {})
-            for p in url_pages.values():
-                info = p.get("imageinfo", [])
-                if info:
-                    img_url = info[0].get("thumburl") or info[0].get("url", "")
-                    if img_url and not is_bad_image(img_url):
-                        print(f"[DEBUG] Selected image: {img_url}")
-                        return img_url
-    except Exception as e:
-        print(f"[DEBUG] get_page_images error: {e}")
-    return None
+    return any(bad.lower() in url.lower() for bad in BAD_KEYWORDS)
 
 def get_wikipedia_image(query, is_map=False):
     try:
         api_url = "https://en.wikipedia.org/w/api.php"
+        results = requests.get(api_url, params={
+            "action": "query", "list": "search",
+            "srsearch": query, "srlimit": 5, "format": "json"
+        }, timeout=6, headers={"User-Agent": "SmartTeacher/1.0"}).json()
+        results = results.get("query", {}).get("search", [])
 
-        # חיפוש ערך מתאים
-        search_query = query + " map" if is_map else query
-        search_params = {
-            "action": "query",
-            "list": "search",
-            "srsearch": search_query,
-            "srlimit": 5,
-            "format": "json"
-        }
-        search_res = requests.get(api_url, params=search_params, timeout=6,
-                                  headers={"User-Agent": "SmartTeacher/1.0"})
-        results = search_res.json().get("query", {}).get("search", [])
-        if not results:
-            return None
-
-        # נסה עד 3 ערכים
         for result in results[:3]:
             page_title = result["title"]
-            print(f"[DEBUG] Trying Wikipedia page: {page_title}")
+            img_res = requests.get(api_url, params={
+                "action": "query", "titles": page_title,
+                "prop": "images", "imlimit": 30, "format": "json"
+            }, timeout=6, headers={"User-Agent": "SmartTeacher/1.0"}).json()
+            pages = img_res.get("query", {}).get("pages", {})
 
-            # נסה קודם thumbnail ישיר
-            thumb_params = {
-                "action": "query",
-                "titles": page_title,
-                "prop": "pageimages",
-                "pithumbsize": 1000,
-                "format": "json"
-            }
-            thumb_res = requests.get(api_url, params=thumb_params, timeout=6,
-                                     headers={"User-Agent": "SmartTeacher/1.0"})
-            thumb_pages = thumb_res.json().get("query", {}).get("pages", {})
-            for p in thumb_pages.values():
-                img_url = p.get("thumbnail", {}).get("source", "")
-                if img_url and not is_bad_image(img_url):
-                    print(f"[DEBUG] Thumbnail OK: {img_url}")
-                    return img_url
+            candidates = []
+            for page in pages.values():
+                for img in page.get("images", []):
+                    t = img.get("title", "")
+                    t_lower = t.lower()
+                    if not any(ext in t_lower for ext in [".jpg", ".jpeg", ".png"]):
+                        continue
+                    if is_bad_image(t):
+                        continue
+                    if is_map and any(k in t_lower for k in ["map", "topograph", "relief", "terrain"]):
+                        candidates.insert(0, t)
+                    else:
+                        candidates.append(t)
 
-            # אם thumbnail רע — חפש בכל תמונות הדף
-            img_url = get_page_images(page_title, is_map=is_map)
-            if img_url:
-                return img_url
-
+            for img_title in candidates[:5]:
+                url_pages = requests.get(api_url, params={
+                    "action": "query", "titles": img_title,
+                    "prop": "imageinfo", "iiprop": "url",
+                    "iiurlwidth": 1000, "format": "json"
+                }, timeout=6, headers={"User-Agent": "SmartTeacher/1.0"}).json()
+                for p in url_pages.get("query", {}).get("pages", {}).values():
+                    info = p.get("imageinfo", [])
+                    if info:
+                        img_url = info[0].get("thumburl") or info[0].get("url", "")
+                        if img_url and not is_bad_image(img_url):
+                            return img_url
     except Exception as e:
         print(f"[DEBUG] Wikipedia error: {e}")
     return None
@@ -208,15 +192,15 @@ def get_wikipedia_image(query, is_map=False):
 def build_image_url(user_input):
     is_map = any(word in user_input for word in MAP_WORDS)
     english_query = translate_to_english(user_input)
-    print(f"[DEBUG] translated: '{user_input}' → '{english_query}' (map={is_map})")
-
+    if is_map:
+        english_query += " map geography"
     img_url = get_wikipedia_image(english_query, is_map=is_map)
     if img_url:
         return img_url
-
-    # גיבוי: Picsum
     seed = int(hashlib.md5(english_query.encode()).hexdigest()[:8], 16) % 1000
     return f"https://picsum.photos/seed/{seed}/1024/768"
+
+# ===== נתיבים =====
 
 @app.route("/")
 def index():
@@ -226,6 +210,7 @@ def index():
 def chat():
     user_input = request.form.get("message", "")
     image_file = request.files.get("image")
+    doc_file   = request.files.get("document")
     history_raw = request.form.get("history", "[]")
 
     try:
@@ -233,19 +218,41 @@ def chat():
     except:
         history = []
 
-    if not user_input and not image_file:
+    if not user_input and not image_file and not doc_file:
         return jsonify({"reply": "Empty message"}), 400
 
+    doc_text = None
+    doc_type = None
+
+    # חילוץ טקסט מקובץ מסמך
+    if doc_file and doc_file.filename:
+        file_bytes = doc_file.read()
+        doc_text, doc_type = extract_text_from_file(
+            file_bytes, doc_file.filename, doc_file.content_type or ""
+        )
+
     wants_visual = any(word in user_input for word in MAP_WORDS + IMAGE_WORDS)
-    image_url = build_image_url(user_input) if wants_visual else None
+    image_url = build_image_url(user_input) if wants_visual and not doc_file else None
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
     headers = {'Content-Type': 'application/json'}
 
-    if wants_visual:
+    # בניית prompt
+    if doc_text:
         prompt_text = f"""אתה 'המורה החכם' - פרופסור ומדען מומחה. ענה תמיד ברמה אקדמית גבוהה.
-המשתמש ביקש תמונה/מפה — המערכת כבר מטפלת בהצגתה אוטומטית.
-תפקידך: ספק תיאור אקדמי מפורט ומעניין של הנושא. אל תזכיר שאינך יכול להציג תמונות.
+המשתמש העלה קובץ {doc_type} עם התוכן הבא:
+
+---
+{doc_text}
+---
+
+שאלת המשתמש לגבי הקובץ: {user_input if user_input else 'סכם את הקובץ בצורה מפורטת ומקצועית'}
+
+ענה בצורה מקיפה ומדויקת על סמך תוכן הקובץ."""
+    elif wants_visual:
+        prompt_text = f"""אתה 'המורה החכם' - פרופסור ומדען מומחה. ענה תמיד ברמה אקדמית גבוהה.
+המשתמש ביקש תמונה/מפה — המערכת כבר מציגה אותה אוטומטית.
+תפקידך: ספק תיאור אקדמי מפורט של הנושא. אל תזכיר שאינך יכול להציג תמונות.
 השאלה: {user_input}"""
     else:
         prompt_text = f"""אתה 'המורה החכם' - פרופסור ומדען מומחה. ענה תמיד ברמה אקדמית גבוהה.
@@ -257,7 +264,7 @@ def chat():
         contents.append({"role": role, "parts": [{"text": msg['text']}]})
 
     current_parts = [{"text": prompt_text}]
-    if image_file:
+    if image_file and image_file.filename:
         try:
             img_data = base64.b64encode(image_file.read()).decode('utf-8')
             current_parts.append({"inline_data": {"mime_type": image_file.content_type, "data": img_data}})
@@ -271,14 +278,19 @@ def chat():
         if response.status_code == 200:
             reply = data['candidates'][0]['content']['parts'][0]['text']
         else:
-            reply = "הנה התמונה שביקשת:" if wants_visual else "שגיאת שרת גוגל."
+            reply = "שגיאת שרת גוגל."
+            print(f"[DEBUG] Gemini error {response.status_code}: {data}")
         try:
-            db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", user_input or "תמונה", reply)
+            db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)",
+                       user_input or doc_file.filename if doc_file else "תמונה", reply)
         except: pass
-        return jsonify({"reply": reply, "image_url": image_url})
+        return jsonify({
+            "reply": reply,
+            "image_url": image_url,
+            "doc_type": doc_type
+        })
     except Exception as e:
-        reply = "הנה התמונה שביקשת:" if wants_visual else f"תקלה: {str(e)}"
-        return jsonify({"reply": reply, "image_url": image_url})
+        return jsonify({"reply": f"תקלה: {str(e)}", "image_url": image_url})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))

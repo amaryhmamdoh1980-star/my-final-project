@@ -35,6 +35,23 @@
         .message-content h1,.message-content h2,.message-content h3 { margin: 8px 0 4px; }
         .message-content ul,.message-content ol { padding-right: 20px; }
         .message-content p { margin: 4px 0; }
+        /* תצוגת קובץ מצורף */
+        .file-preview { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; font-size: 14px; }
+        .file-preview i { font-size: 20px; }
+        .file-preview .pdf-icon { color: #e74c3c; }
+        .file-preview .word-icon { color: #2980b9; }
+        .file-preview .excel-icon { color: #27ae60; }
+        .file-preview .txt-icon { color: #7f8c8d; }
+        .file-preview .remove-btn { margin-right: auto; cursor: pointer; color: #999; font-size: 16px; background: none; border: none; }
+        /* כפתור Google Docs */
+        .gdocs-btn { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; padding: 7px 14px; background: #4285F4; color: white; border-radius: 20px; font-size: 13px; cursor: pointer; border: none; text-decoration: none; }
+        .gdocs-btn:hover { background: #3367d6; }
+        .gdocs-btn img { width: 16px; height: 16px; }
+        /* שאלת שמירה */
+        .save-question { margin-top: 10px; padding: 10px; background: #e8f4fd; border-radius: 10px; border-right: 3px solid #4285F4; font-size: 14px; }
+        .save-question .save-btns { display: flex; gap: 8px; margin-top: 8px; }
+        .save-yes { background: #4285F4; color: white; border: none; border-radius: 15px; padding: 5px 15px; cursor: pointer; font-size: 13px; }
+        .save-no { background: #e0e0e0; color: #333; border: none; border-radius: 15px; padding: 5px 15px; cursor: pointer; font-size: 13px; }
     </style>
 </head>
 <body class="rtl" id="app-body">
@@ -53,18 +70,36 @@
             <img src="/static/uploads/images (2).jfif" class="profile-img">
         </a>
     </div>
+
     <div id="chat-window">
-        <div class="message bot" id="txt-welcome">שלום! אני כאן בשבילך. איך אוכל לעזור לך היום?</div>
+        <div class="message bot" id="txt-welcome">שלום! אני כאן בשבילך. תוכל לשאול שאלות, להעלות תמונות, או לצרף מסמכים (PDF, Word, Excel, טקסט) ואענה עליהם.</div>
         <div id="typing-bubble" class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
     </div>
+
     <div id="input-area">
-        <div id="preview-box" style="display:none; text-align:center; padding:5px;">
-            <img id="preview-img-src" style="max-height:70px; border-radius:5px;">
-            <button onclick="document.getElementById('file-in').value=''; document.getElementById('preview-box').style.display='none';">×</button>
+        <!-- תצוגה מקדימה של קובץ/תמונה שהועלו -->
+        <div id="preview-box" style="display:none; padding:5px;">
+            <div id="img-preview-wrap" style="display:none; text-align:center;">
+                <img id="preview-img-src" style="max-height:70px; border-radius:5px;">
+            </div>
+            <div id="doc-preview-wrap" style="display:none;">
+                <div class="file-preview">
+                    <i id="doc-icon" class="fas fa-file"></i>
+                    <span id="doc-name"></span>
+                    <button class="remove-btn" onclick="removeDoc()"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
         </div>
+
         <div class="input-row">
-            <input type="file" id="file-in" hidden accept="image/*" onchange="showPreview(this)">
-            <button class="icon-only" onclick="document.getElementById('file-in').click()"><i class="fas fa-camera"></i></button>
+            <!-- העלאת תמונה -->
+            <input type="file" id="file-in" hidden accept="image/*" onchange="showImgPreview(this)">
+            <button class="icon-only" onclick="document.getElementById('file-in').click()" title="העלה תמונה"><i class="fas fa-camera"></i></button>
+
+            <!-- העלאת מסמך -->
+            <input type="file" id="doc-in" hidden accept=".pdf,.doc,.docx,.xls,.xlsx,.txt" onchange="showDocPreview(this)">
+            <button class="icon-only" onclick="document.getElementById('doc-in').click()" title="העלה מסמך PDF/Word/Excel"><i class="fas fa-paperclip"></i></button>
+
             <input type="text" id="user-input" placeholder="הקלד שאלה..." onkeypress="if(event.key==='Enter') send()">
             <button class="icon-only" id="mic-btn"><i class="fas fa-microphone"></i></button>
             <button class="btn-round" onclick="send()"><i class="fas fa-paper-plane"></i></button>
@@ -74,6 +109,8 @@
 <script>
     let currentLang = 'he';
     let chatHistory = [];
+    let lastUserMsg = '';
+    let lastBotReply = '';
     const win = document.getElementById('chat-window');
     const typing = document.getElementById('typing-bubble');
 
@@ -87,16 +124,47 @@
         document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.id === 'l-'+lang));
     }
 
-    function showPreview(input) {
+    function showImgPreview(input) {
         if (input.files && input.files[0]) {
+            removeDoc();
             const reader = new FileReader();
-            reader.onload = e => { document.getElementById('preview-img-src').src = e.target.result; document.getElementById('preview-box').style.display = 'block'; };
+            reader.onload = e => {
+                document.getElementById('preview-img-src').src = e.target.result;
+                document.getElementById('img-preview-wrap').style.display = 'block';
+                document.getElementById('preview-box').style.display = 'block';
+            };
             reader.readAsDataURL(input.files[0]);
         }
     }
 
+    function getDocIcon(filename) {
+        const f = filename.toLowerCase();
+        if (f.endsWith('.pdf')) return ['fa-file-pdf', 'pdf-icon'];
+        if (f.endsWith('.doc') || f.endsWith('.docx')) return ['fa-file-word', 'word-icon'];
+        if (f.endsWith('.xls') || f.endsWith('.xlsx')) return ['fa-file-excel', 'excel-icon'];
+        return ['fa-file-alt', 'txt-icon'];
+    }
+
+    function showDocPreview(input) {
+        if (input.files && input.files[0]) {
+            document.getElementById('file-in').value = '';
+            document.getElementById('img-preview-wrap').style.display = 'none';
+            const [iconClass, colorClass] = getDocIcon(input.files[0].name);
+            const icon = document.getElementById('doc-icon');
+            icon.className = `fas ${iconClass} ${colorClass}`;
+            document.getElementById('doc-name').innerText = input.files[0].name;
+            document.getElementById('doc-preview-wrap').style.display = 'block';
+            document.getElementById('preview-box').style.display = 'block';
+        }
+    }
+
+    function removeDoc() {
+        document.getElementById('doc-in').value = '';
+        document.getElementById('doc-preview-wrap').style.display = 'none';
+        document.getElementById('preview-box').style.display = 'none';
+    }
+
     function cleanText(text) {
-        // אם הטקסט מכיל תגיות HTML גולמיות — הסר אותן והמר ל-markdown
         if (/<[a-z][\s\S]*>/i.test(text)) {
             const tmp = document.createElement('div');
             tmp.innerHTML = text;
@@ -105,82 +173,149 @@
         return text;
     }
 
+    // יוצר קישור לGoogle Docs עם תוכן השיחה
+    function buildGoogleDocsUrl(userMsg, botReply) {
+        const content = `שאלה:\n${userMsg}\n\nתשובה:\n${botReply}`;
+        const encoded = encodeURIComponent(content);
+        // פותח Google Docs חדש עם טקסט מוכן להדבקה
+        return `https://docs.google.com/document/create?usp=docs_home`;
+    }
+
+    function addSaveToDocsOption(div, userMsg, botReply) {
+        const saveBox = document.createElement('div');
+        saveBox.className = 'save-question';
+        saveBox.innerHTML = `<span>📄 רוצה לשמור את השיחה ב-Google Docs?</span>
+        <div class="save-btns">
+            <button class="save-yes" onclick="saveToGoogleDocs(this, \`${encodeURIComponent(userMsg)}\`, \`${encodeURIComponent(botReply)}\`)">כן, שמור</button>
+            <button class="save-no" onclick="this.closest('.save-question').remove()">לא תודה</button>
+        </div>`;
+        div.appendChild(saveBox);
+    }
+
+    function saveToGoogleDocs(btn, encodedUser, encodedBot) {
+        const userMsg = decodeURIComponent(encodedUser);
+        const botReply = decodeURIComponent(encodedBot);
+        
+        // יוצר תוכן מפורמט
+        const title = encodeURIComponent('שיחה עם המורה החכם');
+        const body = encodeURIComponent(
+            `שאלה:\n${userMsg}\n\n` +
+            `תשובה:\n${botReply.replace(/[*#`]/g, '')}\n\n` +
+            `---\nנוצר ע"י המורה החכם`
+        );
+
+        // פותח Google Docs בחלון חדש
+        const docsUrl = `https://docs.new`;
+        const newTab = window.open(docsUrl, '_blank');
+
+        // מחליף את הכפתור בקישור
+        const saveBox = btn.closest('.save-question');
+        saveBox.innerHTML = `✅ <a href="${docsUrl}" target="_blank" style="color:#4285F4; font-weight:bold;">פתח את Google Docs</a> — העתק את הטקסט הבא לתוכו:<br>
+        <textarea style="width:100%; height:80px; font-size:11px; margin-top:5px; border-radius:5px; padding:5px;" readonly>${'שאלה:\n' + userMsg + '\n\nתשובה:\n' + botReply.replace(/[*#`]/g, '')}</textarea>`;
+    }
+
     async function send() {
         const input = document.getElementById('user-input');
         const text = input.value.trim();
-        const file = document.getElementById('file-in').files[0];
-        if (!text && !file) return;
+        const imgFile = document.getElementById('file-in').files[0];
+        const docFile = document.getElementById('doc-in').files[0];
 
+        if (!text && !imgFile && !docFile) return;
+
+        // הצגת הודעת משתמש
         const userDiv = document.createElement('div');
         userDiv.className = 'message user';
-        if (file) {
+
+        if (docFile) {
+            const [iconClass, colorClass] = getDocIcon(docFile.name);
+            const fp = document.createElement('div');
+            fp.className = 'file-preview';
+            fp.innerHTML = `<i class="fas ${iconClass} ${colorClass}"></i><span>${docFile.name}</span>`;
+            userDiv.appendChild(fp);
+        }
+        if (imgFile) {
             const img = document.createElement('img');
             img.src = document.getElementById('preview-img-src').src;
             userDiv.appendChild(img);
         }
-        const t = document.createElement('div'); t.innerText = text; userDiv.appendChild(t);
+        if (text) {
+            const t = document.createElement('div');
+            t.innerText = text;
+            userDiv.appendChild(t);
+        }
+
         win.insertBefore(userDiv, typing);
-        input.value = ''; document.getElementById('preview-box').style.display='none';
+        input.value = '';
+        document.getElementById('preview-box').style.display = 'none';
         typing.style.display = 'flex';
         win.scrollTop = win.scrollHeight;
 
         const formData = new FormData();
         formData.append('message', text);
-        if (file) formData.append('image', file);
+        if (imgFile) formData.append('image', imgFile);
+        if (docFile) formData.append('document', docFile);
         formData.append('history', JSON.stringify(chatHistory));
+
+        // איפוס קבצים
+        document.getElementById('file-in').value = '';
+        document.getElementById('doc-in').value = '';
 
         try {
             const res = await fetch('/chat', { method: 'POST', body: formData });
             const data = await res.json();
             typing.style.display = 'none';
-            chatHistory.push({role: "user", text: text});
+
+            const userText = text || (docFile ? docFile.name : 'תמונה');
+            chatHistory.push({role: "user", text: userText});
             chatHistory.push({role: "model", text: data.reply});
-            addBotMessage(data.reply, data.image_url);
-        } catch (e) { typing.style.display = 'none'; addBotMessage("Error."); }
+
+            lastUserMsg = userText;
+            lastBotReply = data.reply;
+
+            addBotMessage(data.reply, data.image_url, userText);
+        } catch (e) {
+            typing.style.display = 'none';
+            addBotMessage("שגיאה בחיבור לשרת.");
+        }
     }
 
-    function addBotMessage(text, imageUrl = null) {
+    function addBotMessage(text, imageUrl = null, userMsg = '') {
         const div = document.createElement('div');
         div.className = 'message bot';
 
-        // ניקוי טקסט — אם Gemini החזיר HTML גולמי
         const cleanedText = cleanText(text);
-
         const contentDiv = document.createElement('div');
         contentDiv.className = 'message-content';
         contentDiv.innerHTML = marked.parse(cleanedText);
         div.appendChild(contentDiv);
 
+        // תמונה אם קיימת
         if (imageUrl) {
             const imgContainer = document.createElement('div');
-            imgContainer.style.cssText = "margin-top:10px; position:relative; min-height:150px; background:#f0f0f0; border-radius:10px; overflow:hidden; text-align:center;";
-            
-            const loadingText = document.createElement('div');
-            loadingText.style.cssText = "position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#888; font-size:14px;";
-            loadingText.innerText = "טוען תמונה...";
-            imgContainer.appendChild(loadingText);
-
+            imgContainer.style.cssText = "margin-top:10px; position:relative; min-height:150px; background:#f0f0f0; border-radius:10px; overflow:hidden;";
+            const loadTxt = document.createElement('div');
+            loadTxt.style.cssText = "position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#888; font-size:13px;";
+            loadTxt.innerText = "טוען תמונה...";
+            imgContainer.appendChild(loadTxt);
             const img = document.createElement('img');
             img.src = imageUrl;
             img.style.cssText = "width:100%; display:none; border-radius:10px;";
-            img.onload = function() {
-                loadingText.style.display = 'none';
-                imgContainer.style.background = 'none';
-                imgContainer.style.minHeight = '0';
-                this.style.display = 'block';
-            };
-            img.onerror = function() {
-                imgContainer.style.display = 'none';
-            };
+            img.onload = function() { loadTxt.style.display='none'; imgContainer.style.background='none'; imgContainer.style.minHeight='0'; this.style.display='block'; };
+            img.onerror = function() { imgContainer.style.display='none'; };
             imgContainer.appendChild(img);
             div.appendChild(imgContainer);
         }
 
+        // כפתור דיבור
         const btn = document.createElement('button');
-        btn.className = 'icon-only'; btn.innerHTML = '<i class="fas fa-volume-up"></i>';
+        btn.className = 'icon-only';
+        btn.innerHTML = '<i class="fas fa-volume-up"></i>';
         btn.style.marginTop = "8px";
         btn.onclick = () => handleVoice(btn, cleanedText);
         div.appendChild(btn);
+
+        // שאלת שמירה ל-Google Docs
+        addSaveToDocsOption(div, userMsg, cleanedText);
 
         win.insertBefore(div, typing);
         win.scrollTop = win.scrollHeight;
@@ -201,7 +336,10 @@
     const SpeechRec = window.webkitSpeechRecognition || window.SpeechRecognition;
     if (SpeechRec) {
         const r = new SpeechRec();
-        micBtn.onclick = () => { r.lang = (currentLang === 'he' ? 'he-IL' : currentLang === 'ar' ? 'ar-SA' : 'en-US'); r.start(); micBtn.style.color = 'red'; };
+        micBtn.onclick = () => {
+            r.lang = (currentLang === 'he' ? 'he-IL' : currentLang === 'ar' ? 'ar-SA' : 'en-US');
+            r.start(); micBtn.style.color = 'red';
+        };
         r.onresult = e => document.getElementById('user-input').value = e.results[0][0].transcript;
         r.onend = () => micBtn.style.color = '#54656f';
     }
