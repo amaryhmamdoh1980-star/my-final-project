@@ -34,8 +34,9 @@ class DB:
 db = DB()
 API_KEY = os.environ.get("GOOGLE_API_KEY")
 
-MAP_WORDS   = ["מפה", "מפת"]
-IMAGE_WORDS = ["צייר", "תמונה", "תראה לי", "תצלום", "איור"]
+MAP_WORDS   = ["מפה", "מפת", "خريطة", "خريطه"]
+IMAGE_WORDS = ["צייר", "תמונה", "תראה לי", "תצלום", "איור",
+               "صورة", "صوره", "أرني", "ارسم", "رسم", "صور", "اعرض"]
 
 HE_TO_EN = {
     "תראה לי את": "", "תראה לי": "",
@@ -45,6 +46,7 @@ HE_TO_EN = {
     "תצלום של": "", "תצלום": "",
     "איור של": "", "איור": "",
     "של": "", "את": "", "לי": "", "אז": "",
+    # מדינות ומקומות
     "ישראל": "Israel", "ירושלים": "Jerusalem", "תל אביב": "Tel Aviv",
     "חיפה": "Haifa", "אילת": "Eilat", "הנגב": "Negev",
     "הגליל": "Galilee", "הכרמל": "Carmel",
@@ -52,17 +54,70 @@ HE_TO_EN = {
     "ים התיכון": "Mediterranean Sea", "ים סוף": "Red Sea",
     "הר": "mountain", "מדבר": "desert", "יער": "forest",
     "חוף": "beach", "נהר": "river", "אגם": "lake",
+    # סלעים ומינרלים - בסיסי
     "שיש": "marble rock", "מרמור": "marble",
     "סלע דולומיט": "dolomite rock", "דולומיט": "dolomite rock",
     "אבן גיר": "limestone rock", "גיר": "limestone",
     "בזלת": "basalt rock", "גרניט": "granite rock",
     "סלע": "rock", "אבן": "stone", "מינרל": "mineral",
-    "קריסטל": "crystal quartz", "זהב": "gold",
-    "כסף": "silver", "נחושת": "copper",
-    "דינוזאור": "dinosaur", "פיל": "elephant",
-    "אריה": "lion", "נשר": "eagle", "כריש": "shark",
-    "עץ": "tree", "פרח": "flower", "ורד": "rose",
+    "קריסטל": "crystal quartz", "קוורץ": "quartz mineral",
+    "זהב": "gold mineral", "כסף": "silver mineral", "נחושת": "copper mineral",
+    # סלעים מגמתיים
+    "ריוליט": "rhyolite rock", "אנדזיט": "andesite rock",
+    "גברו": "gabbro rock", "דיאבז": "diabase rock",
+    "פרידוטיט": "peridotite rock", "טוף": "tuff volcanic rock",
+    "פומיס": "pumice rock", "אובסידיאן": "obsidian volcanic glass",
+    "בזלת עמודי": "columnar basalt", "לבה": "lava rock",
+    # סלעים משקעיים
+    "אבן חול": "sandstone rock", "אבן חולית": "sandstone",
+    "צור": "flint rock", "חלמיש": "flint",
+    "שיסט חרסיתי": "shale rock", "חרסית": "clay mineral",
+    "גיר אלמוגים": "coral limestone", "אבן גזית": "ashlar limestone",
+    "גיר קונכייתי": "shell limestone", "קונגלומרט": "conglomerate rock",
+    "ברקציה": "breccia rock", "חוואר": "marl rock",
+    "גיר כלייתי": "oolitic limestone", "טורבידיט": "turbidite",
+    # סלעים מטמורפיים
+    "גנייס": "gneiss rock", "שיסט": "schist rock",
+    "קוורציט": "quartzite rock", "פילייט": "phyllite rock",
+    "הורנפלס": "hornfels rock", "מיגמטיט": "migmatite rock",
+    "מרמור מטמורפי": "metamorphic marble",
+    # מינרלים
+    "פיריט": "pyrite mineral fool's gold",
+    "קלציט": "calcite mineral",
+    "פלדספר": "feldspar mineral", "אורתוקלז": "orthoclase feldspar",
+    "פלגיוקלז": "plagioclase feldspar",
+    "מיקה": "mica mineral", "מוסקוביט": "muscovite mica",
+    "ביוטיט": "biotite mica",
+    "גבס": "gypsum mineral", "אניהידריט": "anhydrite mineral",
+    "הליט": "halite rock salt mineral",
+    "מגנטיט": "magnetite mineral", "המטיט": "hematite mineral",
+    "לימוניט": "limonite mineral", "גתיט": "goethite mineral",
+    "מלכיט": "malachite mineral", "אזוריט": "azurite mineral",
+    "גלנה": "galena mineral", "ספלריט": "sphalerite mineral",
+    "כלקופיריט": "chalcopyrite mineral",
+    "אוליבין": "olivine mineral", "פירוקסן": "pyroxene mineral",
+    "אמפיבול": "amphibole mineral", "הורנבלנד": "hornblende mineral",
+    "גרנט": "garnet mineral", "אפידוט": "epidote mineral",
+    "טלק": "talc mineral", "כלוריט": "chlorite mineral",
+    "זרקון": "zircon mineral", "אפטיט": "apatite mineral",
+    "טורמלין": "tourmaline mineral",
+    "פלואוריט": "fluorite mineral", "ברייט": "barite mineral",
+    "אנקריט": "ankerite mineral", "סידריט": "siderite mineral",
+    "דולומיט מינרל": "dolomite mineral",
+    # אבני חן
+    "יהלום": "diamond gemstone", "אודם": "ruby gemstone",
+    "ספיר": "sapphire gemstone", "אמרלד": "emerald gemstone",
+    "אמתיסט": "amethyst gemstone", "טופז": "topaz gemstone",
+    "אוניקס": "onyx gemstone", "אופל": "opal gemstone",
+    "ירקן": "jade gemstone", "פנינה": "pearl",
+    "לפיס לזולי": "lapis lazuli gemstone",
+    # חומרים אחרים
+    "פחם": "coal", "שמן": "petroleum oil",
+    "גז טבעי": "natural gas", "כורכום": "turmeric",
+    "זרחן": "phosphorite rock", "גופרית": "sulfur mineral",
+    # טבע כללי
     "שמש": "sun", "ירח": "moon", "אש": "fire",
+    # מדינות
     "צרפת": "France", "גרמניה": "Germany", "ספרד": "Spain",
     "איטליה": "Italy", "יוון": "Greece", "מצרים": "Egypt",
     "ירדן": "Jordan", "סוריה": "Syria", "לבנון": "Lebanon",
@@ -70,6 +125,113 @@ HE_TO_EN = {
     "רוסיה": "Russia", "סין": "China", "יפן": "Japan",
     "הודו": "India", "ברזיל": "Brazil", "אוסטרליה": "Australia",
     "קנדה": "Canada", "בריטניה": "United Kingdom", "טורקיה": "Turkey",
+    # חיות ועצים
+    "דינוזאור": "dinosaur", "פיל": "elephant",
+    "אריה": "lion", "נשר": "eagle", "כריש": "shark",
+    "עץ": "tree", "פרח": "flower", "ורד": "rose",
+}
+
+AR_TO_EN = {
+    # פקודות
+    "أرني": "", "أرني ": "", "ارسم لي": "", "ارسم": "",
+    "صورة من": "", "صورة لـ": "", "صورة": "", "صوره": "",
+    "رسم": "", "رسمة": "", "اعرض لي": "", "اعرض": "",
+    "خريطة": "map", "خريطه": "map",
+    "تصوير": "", "صور": "",
+    # מדינות ומקומות
+    "إسرائيل": "Israel", "فلسطين": "Palestine",
+    "القدس": "Jerusalem", "تل أبيب": "Tel Aviv",
+    "حيفا": "Haifa", "إيلات": "Eilat",
+    "النقب": "Negev", "الجليل": "Galilee",
+    "البحر الميت": "Dead Sea", "بحيرة طبريا": "Sea of Galilee",
+    "البحر المتوسط": "Mediterranean Sea", "البحر الأحمر": "Red Sea",
+    "جبل": "mountain", "صحراء": "desert",
+    "غابة": "forest", "شاطئ": "beach",
+    "نهر": "river", "بحيرة": "lake",
+    # סלעים מגמתיים
+    "بازلت": "basalt rock", "بازالت": "basalt rock",
+    "جرانيت": "granite rock",
+    "ريوليت": "rhyolite rock", "أنديزيت": "andesite rock",
+    "غابرو": "gabbro rock", "ديابيز": "diabase rock",
+    "بيريدوتيت": "peridotite rock",
+    "توف بركاني": "tuff volcanic rock", "توف": "tuff rock",
+    "بيوميس": "pumice rock", "خفاف": "pumice rock",
+    "أوبسيديان": "obsidian volcanic glass", "زجاج بركاني": "obsidian",
+    "حمم": "lava rock", "لافا": "lava",
+    "بازلت عمودي": "columnar basalt",
+    # סלעים משקעיים
+    "رخام": "marble rock", "مرمر": "marble rock",
+    "حجر جيري": "limestone rock", "كلس": "limestone",
+    "دولوميت": "dolomite rock",
+    "حجر رملي": "sandstone rock",
+    "صوان": "flint rock", "حجر صوان": "flint",
+    "طفلة": "shale rock", "صخر طيني": "mudstone",
+    "طين": "clay mineral", "مارل": "marl rock",
+    "كونغلوميرات": "conglomerate rock",
+    "بريشيا": "breccia rock",
+    "فحم": "coal",
+    # סלעים מטמורפיים
+    "نيس": "gneiss rock", "شيست": "schist rock",
+    "كوارتزيت": "quartzite rock", "فيليت": "phyllite rock",
+    "هورنفلس": "hornfels rock",
+    # מינרלים
+    "كوارتز": "quartz mineral",
+    "معدن": "mineral", "معادن": "minerals",
+    "صخرة": "rock", "صخور": "rocks",
+    "حجر": "stone", "حجارة": "stones",
+    "بيريت": "pyrite mineral", "ذهب الأحمق": "pyrite",
+    "كالسيت": "calcite mineral",
+    "فيلدسبار": "feldspar mineral",
+    "ميكا": "mica mineral", "مسكوفيت": "muscovite mica",
+    "بيوتيت": "biotite mica",
+    "جبس": "gypsum mineral",
+    "ملح صخري": "halite rock salt", "هاليت": "halite mineral",
+    "مغنتيت": "magnetite mineral", "هيماتيت": "hematite mineral",
+    "ليمونيت": "limonite mineral",
+    "مالاكيت": "malachite mineral", "أزوريت": "azurite mineral",
+    "غالينا": "galena mineral",
+    "كالكوبيريت": "chalcopyrite mineral",
+    "أوليفين": "olivine mineral", "بيروكسين": "pyroxene mineral",
+    "أمفيبول": "amphibole mineral", "هورنبلند": "hornblende mineral",
+    "غارنيت": "garnet mineral",
+    "تالك": "talc mineral", "كلوريت": "chlorite mineral",
+    "فلوريت": "fluorite mineral",
+    "توربالين": "tourmaline mineral",
+    "زيركون": "zircon mineral", "أباتيت": "apatite mineral",
+    # אבני חן
+    "ماسة": "diamond gemstone", "الماسة": "diamond",
+    "ياقوت": "ruby gemstone", "ياقوت أزرق": "sapphire gemstone",
+    "زمرد": "emerald gemstone", "زبرجد": "peridot gemstone",
+    "أميثيست": "amethyst gemstone", "توباز": "topaz gemstone",
+    "عقيق": "agate gemstone", "لؤلؤ": "pearl",
+    "لازورد": "lapis lazuli gemstone", "لازوريت": "lapis lazuli",
+    "عقيق يماني": "carnelian gemstone",
+    # מתכות
+    "ذهب": "gold mineral", "فضة": "silver mineral",
+    "نحاس": "copper mineral", "حديد": "iron mineral",
+    "رصاص": "lead mineral", "زنك": "zinc mineral",
+    "ألومنيوم": "aluminum", "منغنيز": "manganese mineral",
+    # טבע
+    "شمس": "sun", "قمر": "moon", "نار": "fire",
+    "بركان": "volcano",
+    "دينصور": "dinosaur", "ديناصور": "dinosaur",
+    "فيل": "elephant", "أسد": "lion",
+    "شجرة": "tree", "وردة": "rose",
+    # מדינות
+    "مصر": "Egypt", "الأردن": "Jordan", "سوريا": "Syria",
+    "لبنان": "Lebanon", "السعودية": "Saudi Arabia",
+    "فرنسا": "France", "ألمانيا": "Germany", "إسبانيا": "Spain",
+    "إيطاليا": "Italy", "اليونان": "Greece",
+    "الولايات المتحدة": "United States", "أمريكا": "United States",
+    "روسيا": "Russia", "الصين": "China", "اليابان": "Japan",
+    "الهند": "India", "البرازيل": "Brazil", "أستراليا": "Australia",
+    # מילות עזר ערביות לניקוי
+    "من": "", "في": "", "على": "", "إلى": "", "عن": "",
+    "هو": "", "هي": "", "هذا": "", "هذه": "",
+    "ما": "", "ماذا": "", "كيف": "", "لماذا": "",
+    "لي": "", "لك": "", "لها": "", "له": "",
+    "أو": "", "مع": "", "بين": "",
+    "نوع": "", "أنواع": "", "شكل": "",
 }
 
 BAD_KEYWORDS = ["globe", "locator", "orthographic", "Flag_of", "Coat_of",
@@ -122,60 +284,112 @@ def extract_text_from_file(file_bytes, filename, mimetype):
 
 def translate_to_english(text):
     result = text
-    for heb, eng in HE_TO_EN.items():
-        result = result.replace(heb, eng)
-    result = re.sub(r'\s+', ' ', result).strip()
-    if re.search(r'[\u0590-\u05FF]', result):
-        result = re.sub(r'[\u0590-\u05FF]+', '', result)
+    is_arabic = bool(re.search(r'[\u0600-\u06FF]', text))
+    is_hebrew = bool(re.search(r'[\u0590-\u05FF]', text))
+
+    if is_arabic:
+        # Sort by length descending so longer phrases match first
+        for ar, eng in sorted(AR_TO_EN.items(), key=lambda x: -len(x[0])):
+            result = result.replace(ar, f" {eng} " if eng else " ")
         result = re.sub(r'\s+', ' ', result).strip()
+        # Remove any remaining Arabic characters
+        if re.search(r'[\u0600-\u06FF]', result):
+            result = re.sub(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]+', '', result)
+            result = re.sub(r'\s+', ' ', result).strip()
+    elif is_hebrew:
+        for heb, eng in sorted(HE_TO_EN.items(), key=lambda x: -len(x[0])):
+            result = result.replace(heb, f" {eng} " if eng else " ")
+        result = re.sub(r'\s+', ' ', result).strip()
+        if re.search(r'[\u0590-\u05FF]', result):
+            result = re.sub(r'[\u0590-\u05FF]+', '', result)
+            result = re.sub(r'\s+', ' ', result).strip()
+
     return result.strip() or "nature"
 
 def is_bad_image(url):
     return any(bad.lower() in url.lower() for bad in BAD_KEYWORDS)
 
 def get_wikipedia_image(query, is_map=False):
+    """
+    Uses Wikipedia pageimages API to get the main representative image of a page.
+    This is much more reliable than listing all images on a page.
+    """
     try:
         api_url = "https://en.wikipedia.org/w/api.php"
-        results = requests.get(api_url, params={
+
+        # --- Method 1: pageimages with search generator (most reliable) ---
+        resp = requests.get(api_url, params={
+            "action": "query",
+            "generator": "search",
+            "gsrsearch": query,
+            "gsrlimit": 5,
+            "prop": "pageimages",
+            "pithumbsize": 1200,
+            "pilimit": 5,
+            "format": "json"
+        }, timeout=8, headers={"User-Agent": "SmartTeacher/1.0"}).json()
+
+        pages = resp.get("query", {}).get("pages", {})
+        # Sort by search relevance (index field)
+        sorted_pages = sorted(pages.values(), key=lambda x: x.get('index', 999))
+        for page in sorted_pages:
+            thumbnail = page.get("thumbnail", {})
+            if thumbnail and thumbnail.get("source"):
+                img_url = thumbnail["source"]
+                if not is_bad_image(img_url):
+                    # Upgrade thumbnail to higher resolution
+                    img_url = re.sub(r'/\d+px-', '/1200px-', img_url)
+                    return img_url
+
+        # --- Method 2: direct title lookup fallback ---
+        search_resp = requests.get(api_url, params={
             "action": "query", "list": "search",
-            "srsearch": query, "srlimit": 5, "format": "json"
+            "srsearch": query, "srlimit": 3, "format": "json"
         }, timeout=6, headers={"User-Agent": "SmartTeacher/1.0"}).json()
-        results = results.get("query", {}).get("search", [])
 
-        for result in results[:3]:
+        for result in search_resp.get("query", {}).get("search", [])[:2]:
             page_title = result["title"]
-            img_res = requests.get(api_url, params={
+            pi_resp = requests.get(api_url, params={
                 "action": "query", "titles": page_title,
-                "prop": "images", "imlimit": 30, "format": "json"
+                "prop": "pageimages", "pithumbsize": 1200, "format": "json"
             }, timeout=6, headers={"User-Agent": "SmartTeacher/1.0"}).json()
-            pages = img_res.get("query", {}).get("pages", {})
-            candidates = []
-            for page in pages.values():
-                for img in page.get("images", []):
-                    t = img.get("title", "")
-                    if not any(ext in t.lower() for ext in [".jpg", ".jpeg", ".png"]):
-                        continue
-                    if is_bad_image(t):
-                        continue
-                    if is_map and any(k in t.lower() for k in ["map", "topograph", "relief", "terrain"]):
-                        candidates.insert(0, t)
-                    else:
-                        candidates.append(t)
 
-            for img_title in candidates[:5]:
-                url_pages = requests.get(api_url, params={
-                    "action": "query", "titles": img_title,
-                    "prop": "imageinfo", "iiprop": "url",
-                    "iiurlwidth": 1000, "format": "json"
-                }, timeout=6, headers={"User-Agent": "SmartTeacher/1.0"}).json()
-                for p in url_pages.get("query", {}).get("pages", {}).values():
-                    info = p.get("imageinfo", [])
-                    if info:
-                        img_url = info[0].get("thumburl") or info[0].get("url", "")
-                        if img_url and not is_bad_image(img_url):
-                            return img_url
+            for page in pi_resp.get("query", {}).get("pages", {}).values():
+                thumbnail = page.get("thumbnail", {})
+                if thumbnail and thumbnail.get("source"):
+                    img_url = thumbnail["source"]
+                    if not is_bad_image(img_url):
+                        img_url = re.sub(r'/\d+px-', '/1200px-', img_url)
+                        return img_url
+
     except Exception as e:
-        print(f"[DEBUG] Wikipedia error: {e}")
+        print(f"[DEBUG] Wikipedia pageimages error: {e}")
+
+    # --- Method 3: Wikimedia Commons fallback (great for rocks & minerals) ---
+    try:
+        commons_url = "https://commons.wikimedia.org/w/api.php"
+        commons_resp = requests.get(commons_url, params={
+            "action": "query",
+            "generator": "search",
+            "gsrsearch": query,
+            "gsrnamespace": 6,   # File namespace
+            "gsrlimit": 5,
+            "prop": "imageinfo",
+            "iiprop": "url",
+            "iiurlwidth": 1200,
+            "format": "json"
+        }, timeout=6, headers={"User-Agent": "SmartTeacher/1.0"}).json()
+
+        for page in commons_resp.get("query", {}).get("pages", {}).values():
+            info = page.get("imageinfo", [])
+            if info:
+                img_url = info[0].get("thumburl") or info[0].get("url", "")
+                if img_url and not is_bad_image(img_url):
+                    return img_url
+
+    except Exception as e:
+        print(f"[DEBUG] Commons error: {e}")
+
     return None
 
 def build_image_url(user_input):
@@ -183,6 +397,7 @@ def build_image_url(user_input):
     english_query = translate_to_english(user_input)
     if is_map:
         english_query += " map geography"
+    print(f"[DEBUG] Translated query: '{english_query}'")
     img_url = get_wikipedia_image(english_query, is_map=is_map)
     if img_url:
         return img_url
