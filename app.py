@@ -37,6 +37,22 @@ API_KEY = os.environ.get("GOOGLE_API_KEY")
 MAP_WORDS   = ["מפה", "מפת", "خريطة", "خريطه"]
 IMAGE_WORDS = ["צייר", "תמונה", "תראה לי", "תצלום", "איור",
                "صورة", "صوره", "أرني", "ارسم", "رسم", "صور", "اعرض"]
+VIDEO_WORDS = [
+    # עברית
+    "סרטון", "וידאו", "סרט", "הראה לי סרטון", "תראה לי סרטון",
+    "תן לי סרטון", "תראה לי וידאו", "רוצה לראות", "תן לי וידאו",
+    # ערבית
+    "فيديو", "مقطع فيديو", "مقطع", "فلم", "شاهد",
+    "أرني فيديو", "أرني مقطع", "اعرض لي فيديو", "اعرض فيديو",
+    "أريد مشاهدة", "بث", "تشغيل",
+]
+
+def detect_lang(text):
+    if re.search(r'[\u0600-\u06FF]', text):
+        return 'ar'
+    if re.search(r'[\u0590-\u05FF]', text):
+        return 'he'
+    return 'en'
 
 HE_TO_EN = {
     "תראה לי את": "", "תראה לי": "",
@@ -45,8 +61,12 @@ HE_TO_EN = {
     "מפה של": "", "מפת": "", "מפה": "",
     "תצלום של": "", "תצלום": "",
     "איור של": "", "איור": "",
-    "של": "", "את": "", "לי": "", "אז": "",
-    # מדינות ומקומות
+    "סרטון על": "", "סרטון של": "", "סרטון": "",
+    "וידאו על": "", "וידאו של": "", "וידאו": "",
+    "סרט על": "", "סרט": "",
+    "הראה לי סרטון על": "", "תראה לי סרטון על": "",
+    "תן לי סרטון על": "", "רוצה לראות": "",
+    "של": "", "את": "", "לי": "", "אז": "", "על": "",
     "ישראל": "Israel", "ירושלים": "Jerusalem", "תל אביב": "Tel Aviv",
     "חיפה": "Haifa", "אילת": "Eilat", "הנגב": "Negev",
     "הגליל": "Galilee", "הכרמל": "Carmel",
@@ -54,7 +74,6 @@ HE_TO_EN = {
     "ים התיכון": "Mediterranean Sea", "ים סוף": "Red Sea",
     "הר": "mountain", "מדבר": "desert", "יער": "forest",
     "חוף": "beach", "נהר": "river", "אגם": "lake",
-    # סלעים ומינרלים - בסיסי
     "שיש": "marble rock", "מרמור": "marble",
     "סלע דולומיט": "dolomite rock", "דולומיט": "dolomite rock",
     "אבן גיר": "limestone rock", "גיר": "limestone",
@@ -62,33 +81,23 @@ HE_TO_EN = {
     "סלע": "rock", "אבן": "stone", "מינרל": "mineral",
     "קריסטל": "crystal quartz", "קוורץ": "quartz mineral",
     "זהב": "gold mineral", "כסף": "silver mineral", "נחושת": "copper mineral",
-    # סלעים מגמתיים
     "ריוליט": "rhyolite rock", "אנדזיט": "andesite rock",
     "גברו": "gabbro rock", "דיאבז": "diabase rock",
     "פרידוטיט": "peridotite rock", "טוף": "tuff volcanic rock",
     "פומיס": "pumice rock", "אובסידיאן": "obsidian volcanic glass",
     "בזלת עמודי": "columnar basalt", "לבה": "lava rock",
-    # סלעים משקעיים
     "אבן חול": "sandstone rock", "אבן חולית": "sandstone",
     "צור": "flint rock", "חלמיש": "flint",
     "שיסט חרסיתי": "shale rock", "חרסית": "clay mineral",
-    "גיר אלמוגים": "coral limestone", "אבן גזית": "ashlar limestone",
-    "גיר קונכייתי": "shell limestone", "קונגלומרט": "conglomerate rock",
+    "גיר אלמוגים": "coral limestone", "קונגלומרט": "conglomerate rock",
     "ברקציה": "breccia rock", "חוואר": "marl rock",
-    "גיר כלייתי": "oolitic limestone", "טורבידיט": "turbidite",
-    # סלעים מטמורפיים
     "גנייס": "gneiss rock", "שיסט": "schist rock",
     "קוורציט": "quartzite rock", "פילייט": "phyllite rock",
     "הורנפלס": "hornfels rock", "מיגמטיט": "migmatite rock",
-    "מרמור מטמורפי": "metamorphic marble",
-    # מינרלים
     "פיריט": "pyrite mineral fool's gold",
-    "קלציט": "calcite mineral",
-    "פלדספר": "feldspar mineral", "אורתוקלז": "orthoclase feldspar",
-    "פלגיוקלז": "plagioclase feldspar",
+    "קלציט": "calcite mineral", "פלדספר": "feldspar mineral",
     "מיקה": "mica mineral", "מוסקוביט": "muscovite mica",
-    "ביוטיט": "biotite mica",
-    "גבס": "gypsum mineral", "אניהידריט": "anhydrite mineral",
+    "ביוטיט": "biotite mica", "גבס": "gypsum mineral",
     "הליט": "halite rock salt mineral",
     "מגנטיט": "magnetite mineral", "המטיט": "hematite mineral",
     "לימוניט": "limonite mineral", "גתיט": "goethite mineral",
@@ -100,24 +109,18 @@ HE_TO_EN = {
     "גרנט": "garnet mineral", "אפידוט": "epidote mineral",
     "טלק": "talc mineral", "כלוריט": "chlorite mineral",
     "זרקון": "zircon mineral", "אפטיט": "apatite mineral",
-    "טורמלין": "tourmaline mineral",
-    "פלואוריט": "fluorite mineral", "ברייט": "barite mineral",
-    "אנקריט": "ankerite mineral", "סידריט": "siderite mineral",
-    "דולומיט מינרל": "dolomite mineral",
-    # אבני חן
+    "טורמלין": "tourmaline mineral", "פלואוריט": "fluorite mineral",
     "יהלום": "diamond gemstone", "אודם": "ruby gemstone",
     "ספיר": "sapphire gemstone", "אמרלד": "emerald gemstone",
     "אמתיסט": "amethyst gemstone", "טופז": "topaz gemstone",
     "אוניקס": "onyx gemstone", "אופל": "opal gemstone",
     "ירקן": "jade gemstone", "פנינה": "pearl",
     "לפיס לזולי": "lapis lazuli gemstone",
-    # חומרים אחרים
-    "פחם": "coal", "שמן": "petroleum oil",
-    "גז טבעי": "natural gas", "כורכום": "turmeric",
-    "זרחן": "phosphorite rock", "גופרית": "sulfur mineral",
-    # טבע כללי
+    "פחם": "coal", "זרחן": "phosphorite rock", "גופרית": "sulfur mineral",
     "שמש": "sun", "ירח": "moon", "אש": "fire",
-    # מדינות
+    "דינוזאור": "dinosaur", "פיל": "elephant",
+    "אריה": "lion", "נשר": "eagle", "כריש": "shark",
+    "עץ": "tree", "פרח": "flower", "ורד": "rose",
     "צרפת": "France", "גרמניה": "Germany", "ספרד": "Spain",
     "איטליה": "Italy", "יוון": "Greece", "מצרים": "Egypt",
     "ירדן": "Jordan", "סוריה": "Syria", "לבנון": "Lebanon",
@@ -125,20 +128,17 @@ HE_TO_EN = {
     "רוסיה": "Russia", "סין": "China", "יפן": "Japan",
     "הודו": "India", "ברזיל": "Brazil", "אוסטרליה": "Australia",
     "קנדה": "Canada", "בריטניה": "United Kingdom", "טורקיה": "Turkey",
-    # חיות ועצים
-    "דינוזאור": "dinosaur", "פיל": "elephant",
-    "אריה": "lion", "נשר": "eagle", "כריש": "shark",
-    "עץ": "tree", "פרח": "flower", "ורד": "rose",
 }
 
 AR_TO_EN = {
-    # פקודות
-    "أرني": "", "أرني ": "", "ارسم لي": "", "ارسم": "",
+    "أرني": "", "ارسم لي": "", "ارسم": "",
     "صورة من": "", "صورة لـ": "", "صورة": "", "صوره": "",
     "رسم": "", "رسمة": "", "اعرض لي": "", "اعرض": "",
+    "أريد مشاهدة": "", "أرني فيديو عن": "", "أرني مقطع عن": "",
+    "فيديو عن": "", "فيديو": "", "مقطع فيديو عن": "", "مقطع فيديو": "",
+    "مقطع عن": "", "مقطع": "", "فلم عن": "", "فلم": "",
+    "شاهد": "", "بث": "", "تشغيل": "",
     "خريطة": "map", "خريطه": "map",
-    "تصوير": "", "صور": "",
-    # מדינות ומקומות
     "إسرائيل": "Israel", "فلسطين": "Palestine",
     "القدس": "Jerusalem", "تل أبيب": "Tel Aviv",
     "حيفا": "Haifa", "إيلات": "Eilat",
@@ -148,76 +148,48 @@ AR_TO_EN = {
     "جبل": "mountain", "صحراء": "desert",
     "غابة": "forest", "شاطئ": "beach",
     "نهر": "river", "بحيرة": "lake",
-    # סלעים מגמתיים
     "بازلت": "basalt rock", "بازالت": "basalt rock",
-    "جرانيت": "granite rock",
-    "ريوليت": "rhyolite rock", "أنديزيت": "andesite rock",
-    "غابرو": "gabbro rock", "ديابيز": "diabase rock",
+    "جرانيت": "granite rock", "ريوليت": "rhyolite rock",
+    "أنديزيت": "andesite rock", "غابرو": "gabbro rock",
     "بيريدوتيت": "peridotite rock",
     "توف بركاني": "tuff volcanic rock", "توف": "tuff rock",
     "بيوميس": "pumice rock", "خفاف": "pumice rock",
     "أوبسيديان": "obsidian volcanic glass", "زجاج بركاني": "obsidian",
     "حمم": "lava rock", "لافا": "lava",
     "بازلت عمودي": "columnar basalt",
-    # סלעים משקעיים
     "رخام": "marble rock", "مرمر": "marble rock",
     "حجر جيري": "limestone rock", "كلس": "limestone",
-    "دولوميت": "dolomite rock",
-    "حجر رملي": "sandstone rock",
-    "صوان": "flint rock", "حجر صوان": "flint",
-    "طفلة": "shale rock", "صخر طيني": "mudstone",
+    "دولوميت": "dolomite rock", "حجر رملي": "sandstone rock",
+    "صوان": "flint rock", "طفلة": "shale rock",
     "طين": "clay mineral", "مارل": "marl rock",
-    "كونغلوميرات": "conglomerate rock",
-    "بريشيا": "breccia rock",
+    "كونغلوميرات": "conglomerate rock", "بريشيا": "breccia rock",
     "فحم": "coal",
-    # סלעים מטמורפיים
     "نيس": "gneiss rock", "شيست": "schist rock",
     "كوارتزيت": "quartzite rock", "فيليت": "phyllite rock",
     "هورنفلس": "hornfels rock",
-    # מינרלים
-    "كوارتز": "quartz mineral",
-    "معدن": "mineral", "معادن": "minerals",
-    "صخرة": "rock", "صخور": "rocks",
-    "حجر": "stone", "حجارة": "stones",
-    "بيريت": "pyrite mineral", "ذهب الأحمق": "pyrite",
-    "كالسيت": "calcite mineral",
-    "فيلدسبار": "feldspar mineral",
-    "ميكا": "mica mineral", "مسكوفيت": "muscovite mica",
-    "بيوتيت": "biotite mica",
-    "جبس": "gypsum mineral",
-    "ملح صخري": "halite rock salt", "هاليت": "halite mineral",
+    "كوارتز": "quartz mineral", "معدن": "mineral",
+    "صخرة": "rock", "حجر": "stone",
+    "بيريت": "pyrite mineral", "كالسيت": "calcite mineral",
+    "فيلدسبار": "feldspar mineral", "ميكا": "mica mineral",
+    "جبس": "gypsum mineral", "ملح صخري": "halite rock salt",
     "مغنتيت": "magnetite mineral", "هيماتيت": "hematite mineral",
-    "ليمونيت": "limonite mineral",
     "مالاكيت": "malachite mineral", "أزوريت": "azurite mineral",
-    "غالينا": "galena mineral",
-    "كالكوبيريت": "chalcopyrite mineral",
+    "غالينا": "galena mineral", "كالكوبيريت": "chalcopyrite mineral",
     "أوليفين": "olivine mineral", "بيروكسين": "pyroxene mineral",
-    "أمفيبول": "amphibole mineral", "هورنبلند": "hornblende mineral",
-    "غارنيت": "garnet mineral",
-    "تالك": "talc mineral", "كلوريت": "chlorite mineral",
-    "فلوريت": "fluorite mineral",
-    "توربالين": "tourmaline mineral",
-    "زيركون": "zircon mineral", "أباتيت": "apatite mineral",
-    # אבני חן
+    "أمفيبول": "amphibole mineral", "غارنيت": "garnet mineral",
+    "تالك": "talc mineral", "فلوريت": "fluorite mineral",
+    "توربالين": "tourmaline mineral", "زيركون": "zircon mineral",
     "ماسة": "diamond gemstone", "الماسة": "diamond",
-    "ياقوت": "ruby gemstone", "ياقوت أزرق": "sapphire gemstone",
-    "زمرد": "emerald gemstone", "زبرجد": "peridot gemstone",
+    "ياقوت": "ruby gemstone", "زمرد": "emerald gemstone",
     "أميثيست": "amethyst gemstone", "توباز": "topaz gemstone",
     "عقيق": "agate gemstone", "لؤلؤ": "pearl",
-    "لازورد": "lapis lazuli gemstone", "لازوريت": "lapis lazuli",
-    "عقيق يماني": "carnelian gemstone",
-    # מתכות
+    "لازورد": "lapis lazuli gemstone",
     "ذهب": "gold mineral", "فضة": "silver mineral",
     "نحاس": "copper mineral", "حديد": "iron mineral",
-    "رصاص": "lead mineral", "زنك": "zinc mineral",
-    "ألومنيوم": "aluminum", "منغنيز": "manganese mineral",
-    # טבע
     "شمس": "sun", "قمر": "moon", "نار": "fire",
-    "بركان": "volcano",
-    "دينصور": "dinosaur", "ديناصور": "dinosaur",
+    "بركان": "volcano", "ديناصور": "dinosaur",
     "فيل": "elephant", "أسد": "lion",
     "شجرة": "tree", "وردة": "rose",
-    # מדינות
     "مصر": "Egypt", "الأردن": "Jordan", "سوريا": "Syria",
     "لبنان": "Lebanon", "السعودية": "Saudi Arabia",
     "فرنسا": "France", "ألمانيا": "Germany", "إسبانيا": "Spain",
@@ -225,12 +197,10 @@ AR_TO_EN = {
     "الولايات المتحدة": "United States", "أمريكا": "United States",
     "روسيا": "Russia", "الصين": "China", "اليابان": "Japan",
     "الهند": "India", "البرازيل": "Brazil", "أستراليا": "Australia",
-    # מילות עזר ערביות לניקוי
     "من": "", "في": "", "على": "", "إلى": "", "عن": "",
     "هو": "", "هي": "", "هذا": "", "هذه": "",
     "ما": "", "ماذا": "", "كيف": "", "لماذا": "",
-    "لي": "", "لك": "", "لها": "", "له": "",
-    "أو": "", "مع": "", "بين": "",
+    "لي": "", "لك": "", "أو": "", "مع": "", "بين": "",
     "نوع": "", "أنواع": "", "شكل": "",
 }
 
@@ -238,6 +208,7 @@ BAD_KEYWORDS = ["globe", "locator", "orthographic", "Flag_of", "Coat_of",
                  "emblem", "seal", "banner", "logo", "icon", "portrait",
                  "newspaper", "magazine", "article", "stamp"]
 
+# ─────────────────── File extraction ───────────────────
 def extract_text_from_pdf(file_bytes):
     try:
         import fitz
@@ -282,17 +253,16 @@ def extract_text_from_file(file_bytes, filename, mimetype):
         return file_bytes.decode("utf-8", errors="ignore")[:8000], "טקסט"
     return None, None
 
+# ─────────────────── Translation ───────────────────
 def translate_to_english(text):
     result = text
     is_arabic = bool(re.search(r'[\u0600-\u06FF]', text))
     is_hebrew = bool(re.search(r'[\u0590-\u05FF]', text))
 
     if is_arabic:
-        # Sort by length descending so longer phrases match first
         for ar, eng in sorted(AR_TO_EN.items(), key=lambda x: -len(x[0])):
             result = result.replace(ar, f" {eng} " if eng else " ")
         result = re.sub(r'\s+', ' ', result).strip()
-        # Remove any remaining Arabic characters
         if re.search(r'[\u0600-\u06FF]', result):
             result = re.sub(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]+', '', result)
             result = re.sub(r'\s+', ' ', result).strip()
@@ -309,15 +279,65 @@ def translate_to_english(text):
 def is_bad_image(url):
     return any(bad.lower() in url.lower() for bad in BAD_KEYWORDS)
 
+# ─────────────────── YouTube video search ───────────────────
+def get_youtube_video(query, lang='he'):
+    """Search YouTube Data API v3. Returns embed URL or None."""
+    if not API_KEY:
+        return None
+    try:
+        # First try: search in user's language
+        if lang == 'he':
+            lang_query = f"{query} בעברית"
+            relevance_lang = 'he'
+        elif lang == 'ar':
+            lang_query = f"{query} بالعربية"
+            relevance_lang = 'ar'
+        else:
+            lang_query = query
+            relevance_lang = 'en'
+
+        params = {
+            "part": "snippet",
+            "q": lang_query,
+            "type": "video",
+            "maxResults": 5,
+            "relevanceLanguage": relevance_lang,
+            "safeSearch": "strict",
+            "videoEmbeddable": "true",
+            "key": API_KEY,
+        }
+        resp = requests.get(
+            "https://www.googleapis.com/youtube/v3/search",
+            params=params, timeout=8
+        ).json()
+
+        for item in resp.get("items", []):
+            video_id = item.get("id", {}).get("videoId")
+            if video_id:
+                return f"https://www.youtube.com/embed/{video_id}?rel=0&modestbranding=1"
+
+        # Fallback: English query
+        if lang != 'en':
+            params["q"] = query
+            params["relevanceLanguage"] = "en"
+            resp2 = requests.get(
+                "https://www.googleapis.com/youtube/v3/search",
+                params=params, timeout=8
+            ).json()
+            for item in resp2.get("items", []):
+                video_id = item.get("id", {}).get("videoId")
+                if video_id:
+                    return f"https://www.youtube.com/embed/{video_id}?rel=0&modestbranding=1"
+
+    except Exception as e:
+        print(f"[DEBUG] YouTube API error: {e}")
+    return None
+
+# ─────────────────── Wikipedia image search ───────────────────
 def get_wikipedia_image(query, is_map=False):
-    """
-    Uses Wikipedia pageimages API to get the main representative image of a page.
-    This is much more reliable than listing all images on a page.
-    """
     try:
         api_url = "https://en.wikipedia.org/w/api.php"
 
-        # --- Method 1: pageimages with search generator (most reliable) ---
         resp = requests.get(api_url, params={
             "action": "query",
             "generator": "search",
@@ -330,18 +350,15 @@ def get_wikipedia_image(query, is_map=False):
         }, timeout=8, headers={"User-Agent": "SmartTeacher/1.0"}).json()
 
         pages = resp.get("query", {}).get("pages", {})
-        # Sort by search relevance (index field)
         sorted_pages = sorted(pages.values(), key=lambda x: x.get('index', 999))
         for page in sorted_pages:
             thumbnail = page.get("thumbnail", {})
             if thumbnail and thumbnail.get("source"):
                 img_url = thumbnail["source"]
                 if not is_bad_image(img_url):
-                    # Upgrade thumbnail to higher resolution
                     img_url = re.sub(r'/\d+px-', '/1200px-', img_url)
                     return img_url
 
-        # --- Method 2: direct title lookup fallback ---
         search_resp = requests.get(api_url, params={
             "action": "query", "list": "search",
             "srsearch": query, "srlimit": 3, "format": "json"
@@ -353,7 +370,6 @@ def get_wikipedia_image(query, is_map=False):
                 "action": "query", "titles": page_title,
                 "prop": "pageimages", "pithumbsize": 1200, "format": "json"
             }, timeout=6, headers={"User-Agent": "SmartTeacher/1.0"}).json()
-
             for page in pi_resp.get("query", {}).get("pages", {}).values():
                 thumbnail = page.get("thumbnail", {})
                 if thumbnail and thumbnail.get("source"):
@@ -365,14 +381,13 @@ def get_wikipedia_image(query, is_map=False):
     except Exception as e:
         print(f"[DEBUG] Wikipedia pageimages error: {e}")
 
-    # --- Method 3: Wikimedia Commons fallback (great for rocks & minerals) ---
     try:
         commons_url = "https://commons.wikimedia.org/w/api.php"
         commons_resp = requests.get(commons_url, params={
             "action": "query",
             "generator": "search",
             "gsrsearch": query,
-            "gsrnamespace": 6,   # File namespace
+            "gsrnamespace": 6,
             "gsrlimit": 5,
             "prop": "imageinfo",
             "iiprop": "url",
@@ -397,13 +412,20 @@ def build_image_url(user_input):
     english_query = translate_to_english(user_input)
     if is_map:
         english_query += " map geography"
-    print(f"[DEBUG] Translated query: '{english_query}'")
+    print(f"[DEBUG] Translated image query: '{english_query}'")
     img_url = get_wikipedia_image(english_query, is_map=is_map)
     if img_url:
         return img_url
     seed = int(hashlib.md5(english_query.encode()).hexdigest()[:8], 16) % 1000
     return f"https://picsum.photos/seed/{seed}/1024/768"
 
+def build_video_url(user_input):
+    lang = detect_lang(user_input)
+    english_query = translate_to_english(user_input)
+    print(f"[DEBUG] Translated video query: '{english_query}' lang={lang}")
+    return get_youtube_video(english_query, lang=lang)
+
+# ─────────────────── System prompt ───────────────────
 SYSTEM_PROMPT = """אתה 'המורה החכם' — מורה ומדען מנוסה ומומחה.
 
 חוק מוחלט — פתיחת תשובה:
@@ -416,6 +438,7 @@ SYSTEM_PROMPT = """אתה 'המורה החכם' — מורה ומדען מנוס
   * שאלה קצרה בשיחה ממושכת → תשובה ישירה ללא מבוא כלל
 - ברמה אקדמית מתאימה לשאלה, בצורה מנומסת וברורה."""
 
+# ─────────────────── Routes ───────────────────
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -444,11 +467,19 @@ def chat():
 
     has_uploaded_file = (image_file and image_file.filename) or (doc_file and doc_file.filename)
 
+    # Priority: video > image/map  (mutually exclusive per request)
+    wants_video = (
+        not has_uploaded_file and
+        any(word in user_input for word in VIDEO_WORDS)
+    )
     wants_visual = (
         not has_uploaded_file and
+        not wants_video and
         any(word in user_input for word in MAP_WORDS + IMAGE_WORDS)
     )
+
     image_url = build_image_url(user_input) if wants_visual else None
+    video_url = build_video_url(user_input) if wants_video else None
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
     headers = {'Content-Type': 'application/json'}
@@ -465,6 +496,13 @@ def chat():
 ---
 
 שאלה: {user_question}"""
+    elif wants_video:
+        prompt_text = f"""{SYSTEM_PROMPT}
+
+המשתמש ביקש סרטון — המערכת מציגה אותו אוטומטית.
+תפקידך: תאר את הנושא בקצרה (2-3 משפטים) כמבוא לסרטון. אל תזכיר שאינך יכול להציג סרטונים.
+
+שאלה: {user_input}"""
     elif wants_visual:
         prompt_text = f"""{SYSTEM_PROMPT}
 
@@ -503,9 +541,9 @@ def chat():
             label = user_input or (doc_file.filename if doc_file else "תמונה")
             db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", label, reply)
         except: pass
-        return jsonify({"reply": reply, "image_url": image_url})
+        return jsonify({"reply": reply, "image_url": image_url, "video_url": video_url})
     except Exception as e:
-        return jsonify({"reply": f"תקלה: {str(e)}", "image_url": image_url})
+        return jsonify({"reply": f"תקלה: {str(e)}", "image_url": image_url, "video_url": video_url})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))

@@ -21,9 +21,9 @@
         .message { max-width: 85%; padding: 12px; border-radius: 15px; font-size: 16px; line-height: 1.4; box-shadow: 0 1px 2px rgba(0,0,0,0.1); word-wrap: break-word; position: relative; }
         .message img { max-width: 100%; border-radius: 10px; margin-top: 10px; display: block; border: 1px solid #ddd; }
         .rtl .user { align-self: flex-start; background: var(--user); border-top-left-radius: 2px; }
-        .rtl .bot { align-self: flex-end; background: var(--bot); border-top-right-radius: 2px; }
-        .ltr .user { align-self: flex-end; background: var(--user); border-top-right-radius: 2px; }
-        .ltr .bot { align-self: flex-start; background: var(--bot); border-top-left-radius: 2px; }
+        .rtl .bot  { align-self: flex-end;   background: var(--bot);  border-top-right-radius: 2px; }
+        .ltr .user { align-self: flex-end;   background: var(--user); border-top-right-radius: 2px; }
+        .ltr .bot  { align-self: flex-start; background: var(--bot);  border-top-left-radius: 2px; }
         .typing { display: none; gap: 4px; padding: 12px; background: var(--bot); border-radius: 15px; width: fit-content; align-self: flex-end; margin-bottom: 10px; }
         .dot { width: 8px; height: 8px; background: #888; border-radius: 50%; animation: bounce 1.3s infinite; }
         @keyframes bounce { 0%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-7px); } }
@@ -39,6 +39,33 @@
         .file-preview i { font-size: 20px; }
         .pdf-icon { color: #e74c3c; } .word-icon { color: #2980b9; } .excel-icon { color: #27ae60; } .txt-icon { color: #7f8c8d; }
         .remove-btn { margin-right: auto; cursor: pointer; color: #999; font-size: 16px; background: none; border: none; }
+
+        /* ── Video embed ── */
+        .video-container {
+            margin-top: 10px;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #000;
+            position: relative;
+            width: 100%;
+            padding-top: 56.25%; /* 16:9 */
+        }
+        .video-container iframe {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            border: none;
+        }
+        .video-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #e00;
+            margin-top: 6px;
+            font-weight: bold;
+        }
+        .video-label i { font-size: 15px; }
     </style>
 </head>
 <body class="rtl" id="app-body">
@@ -59,7 +86,7 @@
     </div>
 
     <div id="chat-window">
-        <div class="message bot" id="txt-welcome">שלום! אני כאן בשבילך. תוכל לשאול שאלות, להעלות תמונות, או לצרף מסמכים (PDF, Word, Excel, טקסט) ואענה עליהם.</div>
+        <div class="message bot" id="txt-welcome">שלום! אני כאן בשבילך. תוכל לשאול שאלות, להעלות תמונות, לצרף מסמכים (PDF, Word, Excel, טקסט) — או לבקש תמונה / סרטון בנושא כלשהו!</div>
         <div id="typing-bubble" class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
     </div>
 
@@ -213,14 +240,14 @@
             const userText = text || (docFile ? docFile.name : 'תמונה');
             chatHistory.push({role: "user", text: userText});
             chatHistory.push({role: "model", text: data.reply});
-            addBotMessage(data.reply, data.image_url);
+            addBotMessage(data.reply, data.image_url, data.video_url);
         } catch (e) {
             typing.style.display = 'none';
             addBotMessage("שגיאה בחיבור לשרת.");
         }
     }
 
-    function addBotMessage(text, imageUrl = null) {
+    function addBotMessage(text, imageUrl = null, videoUrl = null) {
         const div = document.createElement('div');
         div.className = 'message bot';
         const cleanedText = cleanText(text);
@@ -229,6 +256,7 @@
         contentDiv.innerHTML = marked.parse(cleanedText);
         div.appendChild(contentDiv);
 
+        // ── Image embed ──
         if (imageUrl) {
             const imgContainer = document.createElement('div');
             imgContainer.style.cssText = "margin-top:10px; position:relative; min-height:150px; background:#f0f0f0; border-radius:10px; overflow:hidden;";
@@ -239,12 +267,31 @@
             const img = document.createElement('img');
             img.src = imageUrl;
             img.style.cssText = "width:100%; display:none; border-radius:10px;";
-            img.onload = function() { loadTxt.style.display='none'; imgContainer.style.background='none'; imgContainer.style.minHeight='0'; this.style.display='block'; };
+            img.onload  = function() { loadTxt.style.display='none'; imgContainer.style.background='none'; imgContainer.style.minHeight='0'; this.style.display='block'; };
             img.onerror = function() { imgContainer.style.display='none'; };
             imgContainer.appendChild(img);
             div.appendChild(imgContainer);
         }
 
+        // ── Video embed ──
+        if (videoUrl) {
+            const label = document.createElement('div');
+            label.className = 'video-label';
+            label.innerHTML = '<i class="fab fa-youtube"></i> סרטון YouTube';
+            div.appendChild(label);
+
+            const container = document.createElement('div');
+            container.className = 'video-container';
+            const iframe = document.createElement('iframe');
+            iframe.src = videoUrl;
+            iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
+            iframe.allowFullscreen = true;
+            iframe.loading = "lazy";
+            container.appendChild(iframe);
+            div.appendChild(container);
+        }
+
+        // ── Voice button ──
         const btn = document.createElement('button');
         btn.className = 'icon-only';
         btn.innerHTML = '<i class="fas fa-volume-up"></i>';
