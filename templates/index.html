@@ -39,15 +39,6 @@
         .file-preview i { font-size: 20px; }
         .pdf-icon { color: #e74c3c; } .word-icon { color: #2980b9; } .excel-icon { color: #27ae60; } .txt-icon { color: #7f8c8d; }
         .remove-btn { margin-right: auto; cursor: pointer; color: #999; font-size: 16px; background: none; border: none; }
-        /* שאלת שמירה */
-        .save-question { margin-top: 10px; padding: 10px 12px; background: #e8f4fd; border-radius: 10px; border-right: 3px solid #4285F4; font-size: 14px; }
-        .save-question p { margin: 0 0 8px 0; }
-        .save-btns { display: flex; gap: 8px; flex-wrap: wrap; }
-        .save-yes { background: #4285F4; color: white; border: none; border-radius: 15px; padding: 6px 16px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 5px; }
-        .save-yes:hover { background: #3367d6; }
-        .save-no { background: #e0e0e0; color: #333; border: none; border-radius: 15px; padding: 6px 16px; cursor: pointer; font-size: 13px; }
-        /* toast notification */
-        #toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; z-index: 9999; display: none; }
     </style>
 </head>
 <body class="rtl" id="app-body">
@@ -76,7 +67,7 @@
         <div id="preview-box" style="display:none; padding:5px;">
             <div id="img-preview-wrap" style="display:none; text-align:center;">
                 <img id="preview-img-src" style="max-height:70px; border-radius:5px;">
-                <button onclick="document.getElementById('file-in').value=''; document.getElementById('img-preview-wrap').style.display='none'; checkPreviewBox();">×</button>
+                <button onclick="clearImg()">×</button>
             </div>
             <div id="doc-preview-wrap" style="display:none;">
                 <div class="file-preview">
@@ -97,20 +88,11 @@
         </div>
     </div>
 
-    <div id="toast"></div>
-
 <script>
     let currentLang = 'he';
     let chatHistory = [];
     const win = document.getElementById('chat-window');
     const typing = document.getElementById('typing-bubble');
-
-    function showToast(msg, duration = 3000) {
-        const t = document.getElementById('toast');
-        t.innerText = msg;
-        t.style.display = 'block';
-        setTimeout(() => t.style.display = 'none', duration);
-    }
 
     function setLanguage(lang) {
         currentLang = lang;
@@ -126,6 +108,12 @@
         const img = document.getElementById('img-preview-wrap').style.display !== 'none';
         const doc = document.getElementById('doc-preview-wrap').style.display !== 'none';
         document.getElementById('preview-box').style.display = (img || doc) ? 'block' : 'none';
+    }
+
+    function clearImg() {
+        document.getElementById('file-in').value = '';
+        document.getElementById('img-preview-wrap').style.display = 'none';
+        checkPreviewBox();
     }
 
     function showImgPreview(input) {
@@ -151,11 +139,9 @@
 
     function showDocPreview(input) {
         if (input.files && input.files[0]) {
-            document.getElementById('file-in').value = '';
-            document.getElementById('img-preview-wrap').style.display = 'none';
+            clearImg();
             const [iconClass, colorClass] = getDocIcon(input.files[0].name);
-            const icon = document.getElementById('doc-icon');
-            icon.className = `fas ${iconClass} ${colorClass}`;
+            document.getElementById('doc-icon').className = `fas ${iconClass} ${colorClass}`;
             document.getElementById('doc-name').innerText = input.files[0].name;
             document.getElementById('doc-preview-wrap').style.display = 'block';
             document.getElementById('preview-box').style.display = 'block';
@@ -175,54 +161,6 @@
             return tmp.innerText;
         }
         return text;
-    }
-
-    // העתק ללוח + פתח Google Docs
-    async function saveToGoogleDocs(btn, userMsg, botReply) {
-        const content = `📚 המורה החכם — שיחה שמורה\n${'='.repeat(40)}\n\n❓ שאלה:\n${userMsg}\n\n💡 תשובה:\n${botReply.replace(/[*#`]/g, '').trim()}\n\n${'='.repeat(40)}\nנוצר ע"י המורה החכם`;
-
-        try {
-            await navigator.clipboard.writeText(content);
-            showToast('✅ הטקסט הועתק! Google Docs נפתח — לחץ Ctrl+V להדבקה');
-        } catch (e) {
-            // גיבוי אם clipboard נחסם
-            const ta = document.createElement('textarea');
-            ta.value = content;
-            ta.style.position = 'fixed';
-            ta.style.opacity = '0';
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            document.body.removeChild(ta);
-            showToast('✅ הטקסט הועתק! לחץ Ctrl+V ב-Google Docs');
-        }
-
-        // פתח Google Docs בחלון חדש
-        window.open('https://docs.new', '_blank');
-
-        // עדכן כפתור
-        btn.closest('.save-btns').innerHTML = '<span style="color:#27ae60; font-size:13px;">✅ הועתק ונפתח Google Docs — הדבק עם Ctrl+V</span>';
-    }
-
-    function addSaveOption(div, userMsg, botReply) {
-        const saveBox = document.createElement('div');
-        saveBox.className = 'save-question';
-        saveBox.innerHTML = `<p>💾 רוצה לשמור את השיחה ב-Google Docs?</p>
-            <div class="save-btns">
-                <button class="save-yes" id="gdocs-btn-${Date.now()}">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 7V3.5L18.5 9H13z"/></svg>
-                    שמור ב-Google Docs
-                </button>
-                <button class="save-no" onclick="this.closest('.save-question').remove()">לא תודה</button>
-            </div>`;
-        
-        // חיבור לאחר הוספה ל-DOM
-        setTimeout(() => {
-            const yesBtn = saveBox.querySelector('.save-yes');
-            if (yesBtn) yesBtn.onclick = () => saveToGoogleDocs(yesBtn, userMsg, botReply);
-        }, 0);
-
-        div.appendChild(saveBox);
     }
 
     async function send() {
@@ -275,14 +213,14 @@
             const userText = text || (docFile ? docFile.name : 'תמונה');
             chatHistory.push({role: "user", text: userText});
             chatHistory.push({role: "model", text: data.reply});
-            addBotMessage(data.reply, data.image_url, userText);
+            addBotMessage(data.reply, data.image_url);
         } catch (e) {
             typing.style.display = 'none';
             addBotMessage("שגיאה בחיבור לשרת.");
         }
     }
 
-    function addBotMessage(text, imageUrl = null, userMsg = '') {
+    function addBotMessage(text, imageUrl = null) {
         const div = document.createElement('div');
         div.className = 'message bot';
         const cleanedText = cleanText(text);
@@ -313,8 +251,6 @@
         btn.style.marginTop = "8px";
         btn.onclick = () => handleVoice(btn, cleanedText);
         div.appendChild(btn);
-
-        addSaveOption(div, userMsg, cleanedText);
 
         win.insertBefore(div, typing);
         win.scrollTop = win.scrollHeight;

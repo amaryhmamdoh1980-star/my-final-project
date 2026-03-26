@@ -14,7 +14,7 @@ app = Flask(__name__)
 DB_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres.yimsexytrswzamnslgcd:MaAm%40036355972@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres')
 app.config['SQLALCHEMY_DATABASE_URI'] = DB_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024  # 20MB max
+app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024
 db_obj = SQLAlchemy(app)
 
 class DB:
@@ -76,16 +76,11 @@ BAD_KEYWORDS = ["globe", "locator", "orthographic", "Flag_of", "Coat_of",
                  "emblem", "seal", "banner", "logo", "icon", "portrait",
                  "newspaper", "magazine", "article", "stamp"]
 
-# ===== חילוץ טקסט מקבצים =====
-
 def extract_text_from_pdf(file_bytes):
     try:
-        import fitz  # PyMuPDF
+        import fitz
         doc = fitz.open(stream=file_bytes, filetype="pdf")
-        text = ""
-        for page in doc:
-            text += page.get_text()
-        return text[:8000]  # מגביל ל-8000 תווים
+        return "".join(page.get_text() for page in doc)[:8000]
     except Exception as e:
         return f"[שגיאה בקריאת PDF: {e}]"
 
@@ -93,8 +88,7 @@ def extract_text_from_docx(file_bytes):
     try:
         from docx import Document
         doc = Document(io.BytesIO(file_bytes))
-        text = "\n".join([para.text for para in doc.paragraphs if para.text.strip()])
-        return text[:8000]
+        return "\n".join(p.text for p in doc.paragraphs if p.text.strip())[:8000]
     except Exception as e:
         return f"[שגיאה בקריאת Word: {e}]"
 
@@ -107,7 +101,7 @@ def extract_text_from_xlsx(file_bytes):
             ws = wb[sheet]
             text += f"\n--- גיליון: {sheet} ---\n"
             for row in ws.iter_rows(values_only=True):
-                row_text = " | ".join([str(c) for c in row if c is not None])
+                row_text = " | ".join(str(c) for c in row if c is not None)
                 if row_text.strip():
                     text += row_text + "\n"
         return text[:8000]
@@ -118,16 +112,13 @@ def extract_text_from_file(file_bytes, filename, mimetype):
     fname = filename.lower()
     if fname.endswith(".pdf") or "pdf" in mimetype:
         return extract_text_from_pdf(file_bytes), "PDF"
-    elif fname.endswith(".docx") or "word" in mimetype or "docx" in mimetype:
+    elif fname.endswith(".docx") or "word" in mimetype:
         return extract_text_from_docx(file_bytes), "Word"
     elif fname.endswith(".xlsx") or "excel" in mimetype or "spreadsheet" in mimetype:
         return extract_text_from_xlsx(file_bytes), "Excel"
     elif fname.endswith(".txt") or "text/plain" in mimetype:
         return file_bytes.decode("utf-8", errors="ignore")[:8000], "טקסט"
-    else:
-        return None, None
-
-# ===== תמונות =====
+    return None, None
 
 def translate_to_english(text):
     result = text
@@ -158,17 +149,15 @@ def get_wikipedia_image(query, is_map=False):
                 "prop": "images", "imlimit": 30, "format": "json"
             }, timeout=6, headers={"User-Agent": "SmartTeacher/1.0"}).json()
             pages = img_res.get("query", {}).get("pages", {})
-
             candidates = []
             for page in pages.values():
                 for img in page.get("images", []):
                     t = img.get("title", "")
-                    t_lower = t.lower()
-                    if not any(ext in t_lower for ext in [".jpg", ".jpeg", ".png"]):
+                    if not any(ext in t.lower() for ext in [".jpg", ".jpeg", ".png"]):
                         continue
                     if is_bad_image(t):
                         continue
-                    if is_map and any(k in t_lower for k in ["map", "topograph", "relief", "terrain"]):
+                    if is_map and any(k in t.lower() for k in ["map", "topograph", "relief", "terrain"]):
                         candidates.insert(0, t)
                     else:
                         candidates.append(t)
@@ -200,8 +189,6 @@ def build_image_url(user_input):
     seed = int(hashlib.md5(english_query.encode()).hexdigest()[:8], 16) % 1000
     return f"https://picsum.photos/seed/{seed}/1024/768"
 
-# ===== נתיבים =====
-
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -221,33 +208,32 @@ def chat():
     if not user_input and not image_file and not doc_file:
         return jsonify({"reply": "Empty message"}), 400
 
-    doc_text = None
-    doc_type = None
-
-    # חילוץ טקסט מקובץ מסמך
+    doc_text, doc_type = None, None
     if doc_file and doc_file.filename:
         file_bytes = doc_file.read()
         doc_text, doc_type = extract_text_from_file(
             file_bytes, doc_file.filename, doc_file.content_type or ""
         )
 
-    wants_visual = any(word in user_input for word in MAP_WORDS + IMAGE_WORDS)
-    image_url = build_image_url(user_input) if wants_visual and not doc_file else None
+    has_uploaded_file = (image_file and image_file.filename) or (doc_file and doc_file.filename)
+
+    # תמונה רק כשמבקשים במפורש — ולא כשמעלים קובץ לניתוח
+    wants_visual = (
+        not has_uploaded_file and
+        any(word in user_input for word in MAP_WORDS + IMAGE_WORDS)
+    )
+    image_url = build_image_url(user_input) if wants_visual else None
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
     headers = {'Content-Type': 'application/json'}
 
-    # בניית prompt
     if doc_text:
         prompt_text = f"""אתה 'המורה החכם' - פרופסור ומדען מומחה. ענה תמיד ברמה אקדמית גבוהה.
 המשתמש העלה קובץ {doc_type} עם התוכן הבא:
-
 ---
 {doc_text}
 ---
-
-שאלת המשתמש לגבי הקובץ: {user_input if user_input else 'סכם את הקובץ בצורה מפורטת ומקצועית'}
-
+שאלת המשתמש: {user_input if user_input else 'סכם את הקובץ בצורה מפורטת ומקצועית'}
 ענה בצורה מקיפה ומדויקת על סמך תוכן הקובץ."""
     elif wants_visual:
         prompt_text = f"""אתה 'המורה החכם' - פרופסור ומדען מומחה. ענה תמיד ברמה אקדמית גבוהה.
@@ -279,16 +265,12 @@ def chat():
             reply = data['candidates'][0]['content']['parts'][0]['text']
         else:
             reply = "שגיאת שרת גוגל."
-            print(f"[DEBUG] Gemini error {response.status_code}: {data}")
+            print(f"[DEBUG] Gemini error {response.status_code}")
         try:
-            db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)",
-                       user_input or doc_file.filename if doc_file else "תמונה", reply)
+            label = user_input or (doc_file.filename if doc_file else "תמונה")
+            db.execute("INSERT INTO history (user_message, bot_message) VALUES (?, ?)", label, reply)
         except: pass
-        return jsonify({
-            "reply": reply,
-            "image_url": image_url,
-            "doc_type": doc_type
-        })
+        return jsonify({"reply": reply, "image_url": image_url})
     except Exception as e:
         return jsonify({"reply": f"תקלה: {str(e)}", "image_url": image_url})
 
