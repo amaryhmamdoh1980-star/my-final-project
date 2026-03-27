@@ -281,11 +281,16 @@ def is_bad_image(url):
 
 # ─────────────────── YouTube video search ───────────────────
 def get_youtube_video(query, lang='he'):
-    """Search YouTube Data API v3. Returns embed URL or None."""
+    """
+    Search YouTube Data API v3.
+    Logs full API response so any error (quota, disabled API, bad key) is visible in Render logs.
+    Returns embed URL or None.
+    """
     if not API_KEY:
+        print("[YouTube] ERROR: GOOGLE_API_KEY env var is not set!")
         return None
+
     try:
-        # First try: search in user's language
         if lang == 'he':
             lang_query = f"{query} בעברית"
             relevance_lang = 'he'
@@ -306,31 +311,66 @@ def get_youtube_video(query, lang='he'):
             "videoEmbeddable": "true",
             "key": API_KEY,
         }
+
+        print(f"[YouTube] Calling API with query='{lang_query}' lang={relevance_lang}")
         resp = requests.get(
             "https://www.googleapis.com/youtube/v3/search",
             params=params, timeout=8
-        ).json()
+        )
+        print(f"[YouTube] HTTP status: {resp.status_code}")
 
-        for item in resp.get("items", []):
+        data = resp.json()
+
+        # Log any API error clearly
+        if "error" in data:
+            err = data["error"]
+            print(f"[YouTube] API ERROR {err.get('code')}: {err.get('message')}")
+            for detail in err.get("errors", []):
+                print(f"[YouTube]   reason={detail.get('reason')} domain={detail.get('domain')}")
+            return None
+
+        items = data.get("items", [])
+        print(f"[YouTube] Found {len(items)} results for lang query")
+
+        for item in items:
             video_id = item.get("id", {}).get("videoId")
             if video_id:
-                return f"https://www.youtube.com/embed/{video_id}?rel=0&modestbranding=1"
+                embed = f"https://www.youtube.com/embed/{video_id}?rel=0&modestbranding=1"
+                print(f"[YouTube] Returning embed: {embed}")
+                return embed
 
         # Fallback: English query
         if lang != 'en':
+            print(f"[YouTube] No results in {lang}, trying English fallback")
             params["q"] = query
             params["relevanceLanguage"] = "en"
             resp2 = requests.get(
                 "https://www.googleapis.com/youtube/v3/search",
                 params=params, timeout=8
-            ).json()
-            for item in resp2.get("items", []):
+            )
+            data2 = resp2.json()
+
+            if "error" in data2:
+                err = data2["error"]
+                print(f"[YouTube] Fallback API ERROR {err.get('code')}: {err.get('message')}")
+                return None
+
+            for item in data2.get("items", []):
                 video_id = item.get("id", {}).get("videoId")
                 if video_id:
-                    return f"https://www.youtube.com/embed/{video_id}?rel=0&modestbranding=1"
+                    embed = f"https://www.youtube.com/embed/{video_id}?rel=0&modestbranding=1"
+                    print(f"[YouTube] Returning fallback embed: {embed}")
+                    return embed
 
+        print("[YouTube] No video found after all attempts")
+
+    except requests.exceptions.Timeout:
+        print("[YouTube] ERROR: Request timed out")
+    except requests.exceptions.ConnectionError as e:
+        print(f"[YouTube] ERROR: Connection error: {e}")
     except Exception as e:
-        print(f"[DEBUG] YouTube API error: {e}")
+        print(f"[YouTube] ERROR: Unexpected exception: {e}")
+
     return None
 
 # ─────────────────── Wikipedia image search ───────────────────
@@ -467,7 +507,6 @@ def chat():
 
     has_uploaded_file = (image_file and image_file.filename) or (doc_file and doc_file.filename)
 
-    # Priority: video > image/map  (mutually exclusive per request)
     wants_video = (
         not has_uploaded_file and
         any(word in user_input for word in VIDEO_WORDS)
