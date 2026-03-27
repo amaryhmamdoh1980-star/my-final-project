@@ -309,7 +309,7 @@ def get_youtube_video(query, lang='he'):
             "relevanceLanguage": relevance_lang,
             "safeSearch": "strict",
             "videoEmbeddable": "true",
-            "key": API_KEY,
+            "key": os.environ.get("YOUTUBE_API_KEY"),
         }
 
         print(f"[YouTube] Calling API with query='{lang_query}' lang={relevance_lang}")
