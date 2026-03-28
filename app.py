@@ -32,8 +32,8 @@ class DB:
         return None
 
 db = DB()
-API_KEY      = os.environ.get("GOOGLE_API_KEY")
-YT_API_KEY   = os.environ.get("YOUTUBE_API_KEY")
+API_KEY    = os.environ.get("GOOGLE_API_KEY")
+YT_API_KEY = os.environ.get("YOUTUBE_API_KEY")
 
 MAP_WORDS   = ["מפה", "מפת", "خريطة", "خريطه"]
 IMAGE_WORDS = ["צייר", "תמונה", "תראה לי", "תצלום", "איור",
@@ -93,11 +93,9 @@ HE_TO_EN = {
     "גנייס": "gneiss", "שיסט": "schist",
     "קוורציט": "quartzite", "פילייט": "phyllite",
     "הורנפלס": "hornfels", "מיגמטיט": "migmatite",
-    "פיריט": "pyrite",
-    "קלציט": "calcite", "פלדספר": "feldspar",
+    "פיריט": "pyrite", "קלציט": "calcite", "פלדספר": "feldspar",
     "מיקה": "mica", "מוסקוביט": "muscovite",
-    "ביוטיט": "biotite", "גבס": "gypsum",
-    "הליט": "halite",
+    "ביוטיט": "biotite", "גבס": "gypsum", "הליט": "halite",
     "מגנטיט": "magnetite", "המטיט": "hematite",
     "לימוניט": "limonite", "גתיט": "goethite",
     "מלכיט": "malachite", "אזוריט": "azurite",
@@ -203,66 +201,98 @@ AR_TO_EN = {
     "نوع": "", "أنواع": "", "شكل": "",
 }
 
-# ─── geologyscience.com slug mapping ───
-# key = keyword to detect in query, value = (category, url-slug)
+# ══════════════════════════════════════════════════
+# SOURCE 1 — geologyscience.com
+# URL pattern: /rocks/{slug}/ or /minerals/{slug}/
+# ══════════════════════════════════════════════════
 GEOLOGY_SLUGS = {
     # Igneous rocks
-    "basalt":       ("rocks", "basalt"),
-    "granite":      ("rocks", "granite"),
-    "rhyolite":     ("rocks", "rhyolite"),
-    "andesite":     ("rocks", "andesite"),
-    "gabbro":       ("rocks", "gabbro"),
-    "obsidian":     ("rocks", "obsidian"),
-    "pumice":       ("rocks", "pumice"),
-    "tuff":         ("rocks", "tuff"),
-    "peridotite":   ("rocks", "peridotite"),
-    "diabase":      ("rocks", "diabase"),
-    "diorite":      ("rocks", "diorite"),
-    "syenite":      ("rocks", "syenite"),
-    "pegmatite":    ("rocks", "pegmatite"),
-    "scoria":       ("rocks", "scoria"),
-    # Sedimentary rocks
-    "limestone":    ("rocks", "limestone"),
-    "sandstone":    ("rocks", "sandstone"),
-    "shale":        ("rocks", "shale"),
-    "conglomerate": ("rocks", "conglomerate"),
-    "breccia":      ("rocks", "breccia"),
-    "dolomite":     ("rocks", "dolomite"),
-    "chalk":        ("rocks", "chalk"),
-    "flint":        ("rocks", "flint"),
-    "chert":        ("rocks", "chert"),
-    "marl":         ("rocks", "marl"),
-    "coal":         ("rocks", "coal"),
-    "travertine":   ("rocks", "travertine"),
-    "mudstone":     ("rocks", "mudstone"),
-    "turbidite":    ("rocks", "turbidite"),
-    # Metamorphic rocks
-    "marble":       ("rocks", "marble"),
-    "quartzite":    ("rocks", "quartzite"),
-    "schist":       ("rocks", "schist"),
-    "gneiss":       ("rocks", "gneiss"),
-    "phyllite":     ("rocks", "phyllite"),
-    "hornfels":     ("rocks", "hornfels"),
-    "slate":        ("rocks", "slate"),
-    "migmatite":    ("rocks", "migmatite"),
-    "eclogite":     ("rocks", "eclogite"),
+    "basalt": ("rocks", "basalt"), "granite": ("rocks", "granite"),
+    "rhyolite": ("rocks", "rhyolite"), "andesite": ("rocks", "andesite"),
+    "gabbro": ("rocks", "gabbro"), "obsidian": ("rocks", "obsidian"),
+    "pumice": ("rocks", "pumice"), "tuff": ("rocks", "tuff"),
+    "peridotite": ("rocks", "peridotite"), "diabase": ("rocks", "diabase"),
+    "diorite": ("rocks", "diorite"), "syenite": ("rocks", "syenite"),
+    "pegmatite": ("rocks", "pegmatite"), "scoria": ("rocks", "scoria"),
+    # Sedimentary
+    "limestone": ("rocks", "limestone"), "sandstone": ("rocks", "sandstone"),
+    "shale": ("rocks", "shale"), "conglomerate": ("rocks", "conglomerate"),
+    "breccia": ("rocks", "breccia"), "dolomite": ("rocks", "dolomite"),
+    "chalk": ("rocks", "chalk"), "flint": ("rocks", "flint"),
+    "chert": ("rocks", "chert"), "marl": ("rocks", "marl"),
+    "coal": ("rocks", "coal"), "travertine": ("rocks", "travertine"),
+    "mudstone": ("rocks", "mudstone"), "turbidite": ("rocks", "turbidite"),
+    # Metamorphic
+    "marble": ("rocks", "marble"), "quartzite": ("rocks", "quartzite"),
+    "schist": ("rocks", "schist"), "gneiss": ("rocks", "gneiss"),
+    "phyllite": ("rocks", "phyllite"), "hornfels": ("rocks", "hornfels"),
+    "slate": ("rocks", "slate"), "migmatite": ("rocks", "migmatite"),
+    "eclogite": ("rocks", "eclogite"),
     # Minerals
+    "quartz": ("minerals", "quartz"), "calcite": ("minerals", "calcite"),
+    "feldspar": ("minerals", "feldspar"), "orthoclase": ("minerals", "orthoclase"),
+    "plagioclase": ("minerals", "plagioclase"), "muscovite": ("minerals", "muscovite"),
+    "biotite": ("minerals", "biotite"), "mica": ("minerals", "mica"),
+    "olivine": ("minerals", "olivine"), "pyroxene": ("minerals", "pyroxene"),
+    "hornblende": ("minerals", "hornblende"), "amphibole": ("minerals", "amphibole"),
+    "garnet": ("minerals", "garnet"), "pyrite": ("minerals", "pyrite"),
+    "magnetite": ("minerals", "magnetite"), "hematite": ("minerals", "hematite"),
+    "malachite": ("minerals", "malachite"), "azurite": ("minerals", "azurite"),
+    "galena": ("minerals", "galena"), "sphalerite": ("minerals", "sphalerite"),
+    "chalcopyrite": ("minerals", "chalcopyrite"), "gypsum": ("minerals", "gypsum"),
+    "halite": ("minerals", "halite"), "fluorite": ("minerals", "fluorite"),
+    "tourmaline": ("minerals", "tourmaline"), "zircon": ("minerals", "zircon"),
+    "apatite": ("minerals", "apatite"), "talc": ("minerals", "talc"),
+    "chlorite": ("minerals", "chlorite"), "epidote": ("minerals", "epidote"),
+    "goethite": ("minerals", "goethite"), "limonite": ("minerals", "limonite"),
+    "barite": ("minerals", "barite"), "sulfur": ("minerals", "sulfur"),
+    "diamond": ("minerals", "diamond"), "ruby": ("minerals", "ruby"),
+    "sapphire": ("minerals", "sapphire"), "emerald": ("minerals", "emerald"),
+    "amethyst": ("minerals", "amethyst"), "topaz": ("minerals", "topaz"),
+    "opal": ("minerals", "opal"), "jade": ("minerals", "jade"),
+    "lapis": ("minerals", "lapis-lazuli"), "onyx": ("minerals", "onyx"),
+    "pearl": ("minerals", "pearl"), "turquoise": ("minerals", "turquoise"),
+    "gold": ("minerals", "gold"), "silver": ("minerals", "silver"),
+    "copper": ("minerals", "copper"),
+}
+
+# ══════════════════════════════════════════════════
+# SOURCE 2 — geologyistheway.com  ← NEW
+# URL patterns discovered from search results:
+#   minerals  → /minerals/{slug}/
+#   igneous   → /igneous/{slug}/
+#   sediment. → /sedimentary/{slug}/
+#   metamorph → /metamorphic/{slug}/   (inferred)
+# Special cases noted: dolomite mineral → "dolomitemineral",
+#   garnet → "garnet-group", amphibole → "amphibole-group"
+# ══════════════════════════════════════════════════
+GEOLOGYWAY_SLUGS = {
+    # Minerals — /minerals/{slug}/
     "quartz":       ("minerals", "quartz"),
     "calcite":      ("minerals", "calcite"),
+    "dolomite":     ("minerals", "dolomitemineral"),   # special slug
+    "olivine":      ("minerals", "olivine"),
+    "garnet":       ("minerals", "garnet-group"),      # special slug
+    "amphibole":    ("minerals", "amphibole-group"),   # special slug
+    "hornblende":   ("minerals", "hornblende"),
+    "pyroxene":     ("minerals", "pyroxene-group"),
     "feldspar":     ("minerals", "feldspar"),
-    "orthoclase":   ("minerals", "orthoclase"),
     "plagioclase":  ("minerals", "plagioclase"),
+    "orthoclase":   ("minerals", "orthoclase"),
     "muscovite":    ("minerals", "muscovite"),
     "biotite":      ("minerals", "biotite"),
     "mica":         ("minerals", "mica"),
-    "olivine":      ("minerals", "olivine"),
-    "pyroxene":     ("minerals", "pyroxene"),
-    "hornblende":   ("minerals", "hornblende"),
-    "amphibole":    ("minerals", "amphibole"),
-    "garnet":       ("minerals", "garnet"),
+    "chlorite":     ("minerals", "chlorite"),
+    "epidote":      ("minerals", "epidote"),
+    "tourmaline":   ("minerals", "tourmaline"),
+    "zircon":       ("minerals", "zircon"),
+    "apatite":      ("minerals", "apatite"),
+    "talc":         ("minerals", "talc"),
     "pyrite":       ("minerals", "pyrite"),
     "magnetite":    ("minerals", "magnetite"),
     "hematite":     ("minerals", "hematite"),
+    "goethite":     ("minerals", "goethite"),
+    "limonite":     ("minerals", "limonite"),
     "malachite":    ("minerals", "malachite"),
     "azurite":      ("minerals", "azurite"),
     "galena":       ("minerals", "galena"),
@@ -271,17 +301,11 @@ GEOLOGY_SLUGS = {
     "gypsum":       ("minerals", "gypsum"),
     "halite":       ("minerals", "halite"),
     "fluorite":     ("minerals", "fluorite"),
-    "tourmaline":   ("minerals", "tourmaline"),
-    "zircon":       ("minerals", "zircon"),
-    "apatite":      ("minerals", "apatite"),
-    "talc":         ("minerals", "talc"),
-    "chlorite":     ("minerals", "chlorite"),
-    "epidote":      ("minerals", "epidote"),
-    "goethite":     ("minerals", "goethite"),
-    "limonite":     ("minerals", "limonite"),
     "barite":       ("minerals", "barite"),
     "sulfur":       ("minerals", "sulfur"),
-    # Gemstones
+    "gold":         ("minerals", "gold"),
+    "silver":       ("minerals", "silver"),
+    "copper":       ("minerals", "copper"),
     "diamond":      ("minerals", "diamond"),
     "ruby":         ("minerals", "ruby"),
     "sapphire":     ("minerals", "sapphire"),
@@ -290,13 +314,60 @@ GEOLOGY_SLUGS = {
     "topaz":        ("minerals", "topaz"),
     "opal":         ("minerals", "opal"),
     "jade":         ("minerals", "jade"),
-    "lapis":        ("minerals", "lapis-lazuli"),
-    "onyx":         ("minerals", "onyx"),
-    "pearl":        ("minerals", "pearl"),
     "turquoise":    ("minerals", "turquoise"),
-    "gold":         ("minerals", "gold"),
-    "silver":       ("minerals", "silver"),
-    "copper":       ("minerals", "copper"),
+    # Igneous rocks — /igneous/{slug}/
+    "granite":      ("igneous", "granite"),
+    "rhyolite":     ("igneous", "rhyolite"),
+    "basalt":       ("igneous", "basalt"),
+    "andesite":     ("igneous", "andesite"),
+    "gabbro":       ("igneous", "gabbro"),
+    "obsidian":     ("igneous", "obsidian"),
+    "pumice":       ("igneous", "pumice"),
+    "tuff":         ("igneous", "tuff"),
+    "peridotite":   ("igneous", "peridotite"),
+    "diorite":      ("igneous", "diorite"),
+    "syenite":      ("igneous", "syenite"),
+    "pegmatite":    ("igneous", "pegmatite"),
+    "scoria":       ("igneous", "scoria"),
+    "diabase":      ("igneous", "diabase"),
+    "dunite":       ("igneous", "dunite"),
+    "kimberlite":   ("igneous", "kimberlite"),
+    "phonolite":    ("igneous", "phonolite"),
+    "trachyte":     ("igneous", "trachyte"),
+    # Sedimentary rocks — /sedimentary/{slug}/
+    "limestone":    ("sedimentary", "limestone"),
+    "sandstone":    ("sedimentary", "sandstone"),
+    "shale":        ("sedimentary", "shale"),
+    "conglomerate": ("sedimentary", "conglomerate"),
+    "breccia":      ("sedimentary", "breccia"),
+    "chalk":        ("sedimentary", "chalk"),
+    "flint":        ("sedimentary", "flint"),
+    "chert":        ("sedimentary", "chert"),
+    "marl":         ("sedimentary", "marl"),
+    "coal":         ("sedimentary", "coal"),
+    "travertine":   ("sedimentary", "travertine"),
+    "mudstone":     ("sedimentary", "mudstone"),
+    "turbidite":    ("sedimentary", "turbidite"),
+    "dolostone":    ("sedimentary", "dolostone"),
+    "evaporite":    ("sedimentary", "evaporite"),
+    "phosphorite":  ("sedimentary", "phosphorite"),
+    # Metamorphic rocks — /metamorphic/{slug}/
+    "marble":       ("metamorphic", "marble"),
+    "quartzite":    ("metamorphic", "quartzite"),
+    "schist":       ("metamorphic", "schist"),
+    "gneiss":       ("metamorphic", "gneiss"),
+    "phyllite":     ("metamorphic", "phyllite"),
+    "hornfels":     ("metamorphic", "hornfels"),
+    "slate":        ("metamorphic", "slate"),
+    "migmatite":    ("metamorphic", "migmatite"),
+    "eclogite":     ("metamorphic", "eclogite"),
+    "blueschist":   ("metamorphic", "blueschist"),
+    "amphibolite":  ("metamorphic", "amphibolite"),
+    "granulite":    ("metamorphic", "granulite"),
+    "serpentinite": ("metamorphic", "serpentinite"),
+    "skarn":        ("metamorphic", "skarn"),
+    "mylonite":     ("metamorphic", "mylonite"),
+    "cataclasite":  ("metamorphic", "cataclasite"),
 }
 
 SCRAPE_HEADERS = {
@@ -358,7 +429,6 @@ def translate_to_english(text):
     result = text
     is_arabic = bool(re.search(r'[\u0600-\u06FF]', text))
     is_hebrew = bool(re.search(r'[\u0590-\u05FF]', text))
-
     if is_arabic:
         for ar, eng in sorted(AR_TO_EN.items(), key=lambda x: -len(x[0])):
             result = result.replace(ar, f" {eng} " if eng else " ")
@@ -373,106 +443,116 @@ def translate_to_english(text):
         if re.search(r'[\u0590-\u05FF]', result):
             result = re.sub(r'[\u0590-\u05FF]+', '', result)
             result = re.sub(r'\s+', ' ', result).strip()
-
     return result.strip() or "nature"
 
 def is_bad_image(url):
     return any(bad.lower() in url.lower() for bad in BAD_KEYWORDS)
 
 def extract_key_term(english_query):
-    """Extract the single most important rock/mineral keyword from the translated query."""
+    """Return the single most specific rock/mineral keyword from the translated query."""
     q = english_query.lower()
-    # Sort by length descending so more specific terms match first
     for slug in sorted(GEOLOGY_SLUGS.keys(), key=lambda x: -len(x)):
         if slug in q:
             return slug
-    # Fall back to first meaningful word
     words = [w for w in q.split() if len(w) > 3 and w not in
              ('rock','stone','mineral','type','show','image','photo','picture','about','with')]
-    return words[0] if words else english_query.split()[0]
+    return words[0] if words else q.split()[0]
 
-# ─────────────────── Image source 1: geologyscience.com ───────────────────
-def get_geologyscience_image(english_query):
+def _scrape_og_image(url, site_name):
     """
-    Directly access geologyscience.com using known URL patterns.
-    Returns an image URL or None.
+    Generic helper: fetch a page and return its og:image or first large content image.
+    Shared by both geology site scrapers.
     """
     try:
         from bs4 import BeautifulSoup
     except ImportError:
-        print("[GeologySite] BeautifulSoup not installed — skipping")
+        print(f"[{site_name}] BeautifulSoup not installed — skipping")
         return None
+    try:
+        resp = requests.get(url, timeout=8, headers=SCRAPE_HEADERS)
+        print(f"[{site_name}] {url} → HTTP {resp.status_code}")
+        if resp.status_code != 200:
+            return None
+        soup = BeautifulSoup(resp.text, 'html.parser')
+        # 1. og:image — best quality hero image
+        og = soup.find('meta', property='og:image')
+        if og and og.get('content'):
+            src = og['content']
+            if not is_bad_image(src):
+                print(f"[{site_name}] og:image → {src}")
+                return src
+        # 2. First large content image
+        for selector in ['.entry-content img', 'article img', '.post-content img',
+                         '.post-body img', 'main img', '.wp-block-image img']:
+            for img in soup.select(selector):
+                src = img.get('src') or img.get('data-src') or ''
+                if not src or src.endswith('.svg') or is_bad_image(src):
+                    continue
+                try:
+                    w = int(img.get('width') or 0)
+                    h = int(img.get('height') or 0)
+                    if (w and w < 100) or (h and h < 100):
+                        continue
+                except:
+                    pass
+                if src.startswith('//'):
+                    src = 'https:' + src
+                elif src.startswith('/'):
+                    src = 'https://' + url.split('/')[2] + src
+                print(f"[{site_name}] content img → {src}")
+                return src
+    except Exception as e:
+        print(f"[{site_name}] Error: {e}")
+    return None
 
+# ─────────────────── Image source 1: geologyscience.com ───────────────────
+def get_geologyscience_image(english_query):
     q = english_query.lower()
     matched = None
     for slug_key in sorted(GEOLOGY_SLUGS.keys(), key=lambda x: -len(x)):
         if slug_key in q:
             matched = GEOLOGY_SLUGS[slug_key]
             break
-
     if not matched:
-        print(f"[GeologySite] No slug match for: '{english_query}'")
+        print(f"[GeologySci] No slug match for: '{english_query}'")
         return None
-
     category, slug = matched
     url = f"https://geologyscience.com/{category}/{slug}/"
-    print(f"[GeologySite] Fetching: {url}")
+    return _scrape_og_image(url, "GeologySci")
 
-    try:
-        resp = requests.get(url, timeout=8, headers=SCRAPE_HEADERS)
-        print(f"[GeologySite] Status: {resp.status_code}")
-        if resp.status_code != 200:
-            return None
+# ─────────────────── Image source 2: geologyistheway.com  ← NEW ───────────────────
+def get_geologyistheway_image(english_query):
+    """
+    Scrapes geologyistheway.com using its URL structure:
+      minerals   → /minerals/{slug}/
+      igneous    → /igneous/{slug}/
+      sedimentary→ /sedimentary/{slug}/
+      metamorphic→ /metamorphic/{slug}/
+    Falls back to None if no slug is mapped or page unavailable.
+    """
+    q = english_query.lower()
+    matched = None
+    for slug_key in sorted(GEOLOGYWAY_SLUGS.keys(), key=lambda x: -len(x)):
+        if slug_key in q:
+            matched = GEOLOGYWAY_SLUGS[slug_key]
+            break
+    if not matched:
+        print(f"[GeologyWay] No slug match for: '{english_query}'")
+        return None
+    category, slug = matched
+    url = f"https://geologyistheway.com/{category}/{slug}/"
+    return _scrape_og_image(url, "GeologyWay")
 
-        soup = BeautifulSoup(resp.text, 'html.parser')
-
-        # 1. og:image — always the best hero image for the page
-        og = soup.find('meta', property='og:image')
-        if og and og.get('content') and 'geologyscience' in og['content']:
-            print(f"[GeologySite] og:image → {og['content']}")
-            return og['content']
-
-        # 2. First <img> inside the article/post body, skip tiny icons & logos
-        for selector in ['.entry-content img', 'article img', '.post-body img', 'main img']:
-            imgs = soup.select(selector)
-            for img in imgs:
-                src = img.get('src') or img.get('data-src') or ''
-                if not src or src.endswith('.svg') or 'logo' in src.lower():
-                    continue
-                w = int(img.get('width', 300) or 300)
-                h = int(img.get('height', 300) or 300)
-                if w < 100 or h < 100:
-                    continue
-                # Normalise relative URLs
-                if src.startswith('//'):
-                    src = 'https:' + src
-                elif src.startswith('/'):
-                    src = 'https://geologyscience.com' + src
-                print(f"[GeologySite] content img → {src}")
-                return src
-
-    except Exception as e:
-        print(f"[GeologySite] Error: {e}")
-
-    return None
-
-# ─────────────────── Image source 2: Wikipedia pageimages ───────────────────
+# ─────────────────── Image source 3: Wikipedia pageimages ───────────────────
 def get_wikipedia_image(query):
-    """Use Wikipedia pageimages API — returns the main thumbnail for the best matching article."""
     try:
         api_url = "https://en.wikipedia.org/w/api.php"
-
         resp = requests.get(api_url, params={
-            "action": "query",
-            "generator": "search",
-            "gsrsearch": query,
-            "gsrlimit": 5,
-            "prop": "pageimages",
-            "pithumbsize": 1200,
-            "pilimit": 5,
-            "format": "json"
+            "action": "query", "generator": "search",
+            "gsrsearch": query, "gsrlimit": 5,
+            "prop": "pageimages", "pithumbsize": 1200,
+            "pilimit": 5, "format": "json"
         }, timeout=8, headers={"User-Agent": "SmartTeacher/1.0"}).json()
-
         pages = resp.get("query", {}).get("pages", {})
         for page in sorted(pages.values(), key=lambda x: x.get('index', 999)):
             thumb = page.get("thumbnail", {})
@@ -481,41 +561,29 @@ def get_wikipedia_image(query):
                 if not is_bad_image(img_url):
                     print(f"[Wikipedia] → {img_url}")
                     return img_url
-
     except Exception as e:
         print(f"[Wikipedia] Error: {e}")
     return None
 
-# ─────────────────── Image source 3: Wikimedia Commons ───────────────────
+# ─────────────────── Image source 4: Wikimedia Commons ───────────────────
 def get_commons_image(query):
-    """Search Wikimedia Commons file namespace for the query."""
     try:
         resp = requests.get("https://commons.wikimedia.org/w/api.php", params={
-            "action": "query",
-            "generator": "search",
-            "gsrsearch": query,
-            "gsrnamespace": 6,
-            "gsrlimit": 8,
-            "prop": "imageinfo",
-            "iiprop": "url|size",
-            "iiurlwidth": 1200,
+            "action": "query", "generator": "search",
+            "gsrsearch": query, "gsrnamespace": 6, "gsrlimit": 8,
+            "prop": "imageinfo", "iiprop": "url|size", "iiurlwidth": 1200,
             "format": "json"
         }, timeout=6, headers={"User-Agent": "SmartTeacher/1.0"}).json()
-
-        best = None
-        best_size = 0
+        best, best_size = None, 0
         for page in resp.get("query", {}).get("pages", {}).values():
             info = page.get("imageinfo", [{}])[0]
             url  = info.get("thumburl") or info.get("url", "")
             size = info.get("width", 0)
             if url and not is_bad_image(url) and size > best_size:
-                best = url
-                best_size = size
-
+                best, best_size = url, size
         if best:
             print(f"[Commons] → {best}")
         return best
-
     except Exception as e:
         print(f"[Commons] Error: {e}")
     return None
@@ -525,101 +593,81 @@ def build_image_url(user_input):
     is_map = any(word in user_input for word in MAP_WORDS)
     english_query = translate_to_english(user_input)
     key_term = extract_key_term(english_query)
-    print(f"[Image] input='{user_input}' → query='{english_query}' → key='{key_term}'")
+    print(f"[Image] '{user_input}' → '{english_query}' → key='{key_term}'")
 
     if is_map:
-        # Maps: skip geologyscience, go straight to Wikipedia
         return (get_wikipedia_image(f"{english_query} map geography") or
                 get_commons_image(f"{english_query} map") or
                 f"https://picsum.photos/seed/{abs(hash(english_query)) % 1000}/1024/768")
 
-    # Priority 1 — geologyscience.com (best for rocks & minerals)
+    # Priority 1 — geologyscience.com
     img = get_geologyscience_image(english_query)
     if img:
         return img
 
-    # Priority 2 — Wikipedia with precise key term
+    # Priority 2 — geologyistheway.com  ← NEW
+    img = get_geologyistheway_image(english_query)
+    if img:
+        return img
+
+    # Priority 3 — Wikipedia
     img = get_wikipedia_image(f"{key_term} geology")
     if img:
         return img
 
-    # Priority 3 — Wikimedia Commons
+    # Priority 4 — Wikimedia Commons
     img = get_commons_image(f"{key_term} geology specimen")
     if img:
         return img
 
-    # Fallback — deterministic placeholder
+    # Fallback
     seed = abs(hash(english_query)) % 1000
     return f"https://picsum.photos/seed/{seed}/1024/768"
 
 # ─────────────────── YouTube video search ───────────────────
 def get_youtube_video(query, lang='he'):
-    """
-    Search YouTube Data API v3.
-    Uses Education category (27) and Science & Technology (28) for relevance.
-    Verifies that the video title actually contains a keyword from the query.
-    """
     key = YT_API_KEY or API_KEY
     if not key:
         print("[YouTube] ERROR: No API key available")
         return None
-
     key_term = extract_key_term(query)
-    # Always search in English for geology topics — more content available
     search_query = f"{key_term} geology"
-
     print(f"[YouTube] Searching: '{search_query}' (lang={lang})")
-
-    for category_id in ["27", "28", ""]:   # Education → Science → any
+    for category_id in ["27", "28", ""]:
         params = {
-            "part": "snippet",
-            "q": search_query,
-            "type": "video",
-            "maxResults": 10,
-            "safeSearch": "strict",
-            "videoEmbeddable": "true",
-            "key": key,
+            "part": "snippet", "q": search_query,
+            "type": "video", "maxResults": 10,
+            "safeSearch": "strict", "videoEmbeddable": "true", "key": key,
         }
         if category_id:
             params["videoCategoryId"] = category_id
-
         try:
-            resp = requests.get(
-                "https://www.googleapis.com/youtube/v3/search",
-                params=params, timeout=8
-            )
+            resp = requests.get("https://www.googleapis.com/youtube/v3/search",
+                                params=params, timeout=8)
             data = resp.json()
-
             if "error" in data:
                 err = data["error"]
                 print(f"[YouTube] API ERROR {err.get('code')}: {err.get('message')}")
                 return None
-
             items = data.get("items", [])
-            print(f"[YouTube] Category {category_id or 'any'}: {len(items)} results")
-
+            print(f"[YouTube] Cat {category_id or 'any'}: {len(items)} results")
             for item in items:
                 video_id = item.get("id", {}).get("videoId")
                 title    = item.get("snippet", {}).get("title", "").lower()
-                # Relevance check: title must contain the key term or a close word
                 if video_id and (key_term in title or query.split()[0].lower() in title):
                     embed = f"https://www.youtube.com/embed/{video_id}?rel=0&modestbranding=1"
-                    print(f"[YouTube] ✓ Match: '{title}' → {embed}")
+                    print(f"[YouTube] ✓ '{title}' → {embed}")
                     return embed
-
-            # Second pass — accept any result from this category
             for item in items:
                 video_id = item.get("id", {}).get("videoId")
                 title    = item.get("snippet", {}).get("title", "").lower()
                 if video_id:
                     embed = f"https://www.youtube.com/embed/{video_id}?rel=0&modestbranding=1"
-                    print(f"[YouTube] ~ Fallback: '{title}' → {embed}")
+                    print(f"[YouTube] ~ fallback '{title}' → {embed}")
                     return embed
-
         except Exception as e:
-            print(f"[YouTube] Exception (category={category_id}): {e}")
-
-    print("[YouTube] No video found after all attempts")
+            print(f"[YouTube] Exception (cat={category_id}): {e}")
+    print("[YouTube] No video found")
     return None
 
 def build_video_url(user_input):
@@ -652,12 +700,10 @@ def chat():
     image_file  = request.files.get("image")
     doc_file    = request.files.get("document")
     history_raw = request.form.get("history", "[]")
-
     try:
         history = json.loads(history_raw)
     except:
         history = []
-
     if not user_input and not image_file and not doc_file:
         return jsonify({"reply": "Empty message"}), 400
 
@@ -665,19 +711,12 @@ def chat():
     if doc_file and doc_file.filename:
         file_bytes = doc_file.read()
         doc_text, doc_type = extract_text_from_file(
-            file_bytes, doc_file.filename, doc_file.content_type or ""
-        )
+            file_bytes, doc_file.filename, doc_file.content_type or "")
 
     has_uploaded_file = (image_file and image_file.filename) or (doc_file and doc_file.filename)
-
-    wants_video = (
-        not has_uploaded_file and
-        any(word in user_input for word in VIDEO_WORDS)
-    )
-    wants_visual = (
-        not has_uploaded_file and not wants_video and
-        any(word in user_input for word in MAP_WORDS + IMAGE_WORDS)
-    )
+    wants_video  = not has_uploaded_file and any(w in user_input for w in VIDEO_WORDS)
+    wants_visual = not has_uploaded_file and not wants_video and \
+                   any(w in user_input for w in MAP_WORDS + IMAGE_WORDS)
 
     image_url = build_image_url(user_input) if wants_visual else None
     video_url = build_video_url(user_input) if wants_video else None
@@ -688,39 +727,25 @@ def chat():
     if doc_text:
         user_question = user_input if user_input else "סכם את הקובץ בצורה מפורטת"
         prompt_text = f"""{SYSTEM_PROMPT}
-
 המשתמש העלה קובץ {doc_type}. ענה על שאלתו על סמך תוכן הקובץ בלבד.
-
-תוכן הקובץ:
----
-{doc_text}
----
-
-שאלה: {user_question}"""
+תוכן הקובץ:\n---\n{doc_text}\n---\nשאלה: {user_question}"""
     elif wants_video:
         prompt_text = f"""{SYSTEM_PROMPT}
-
 המשתמש ביקש סרטון — המערכת מציגה אותו אוטומטית.
 תפקידך: תאר את הנושא בקצרה (2-3 משפטים) כמבוא לסרטון. אל תזכיר שאינך יכול להציג סרטונים.
-
 שאלה: {user_input}"""
     elif wants_visual:
         prompt_text = f"""{SYSTEM_PROMPT}
-
 המשתמש ביקש תמונה/מפה — המערכת מציגה אותה אוטומטית.
 תפקידך: תאר את הנושא בהתאם לשאלה. אל תזכיר שאינך יכול להציג תמונות.
-
 שאלה: {user_input}"""
     else:
-        prompt_text = f"""{SYSTEM_PROMPT}
-
-שאלה: {user_input}"""
+        prompt_text = f"{SYSTEM_PROMPT}\nשאלה: {user_input}"
 
     contents = []
     for msg in history:
         role = "user" if msg['role'] == "user" else "model"
         contents.append({"role": role, "parts": [{"text": msg['text']}]})
-
     current_parts = [{"text": prompt_text}]
     if image_file and image_file.filename:
         try:
@@ -728,7 +753,6 @@ def chat():
             current_parts.append({"inline_data": {"mime_type": image_file.content_type, "data": img_data}})
         except:
             pass
-
     contents.append({"role": "user", "parts": current_parts})
 
     try:
